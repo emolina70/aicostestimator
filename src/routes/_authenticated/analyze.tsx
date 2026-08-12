@@ -2,9 +2,14 @@ import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { analyzePrompt, listProjects, getDashboardData } from "@/lib/analysis.functions";
+import {
+  analyzePrompt,
+  listProjects,
+  getDashboardData,
+  createProject,
+} from "@/lib/analysis.functions";
 import type { AnalyzeResponse } from "@/lib/analysis.functions";
-import { PLATFORMS } from "@/lib/estimator";
+import { PLATFORMS, TASK_TYPES } from "@/lib/estimator";
 import { AnalysisReport } from "@/components/AnalysisReport";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -45,12 +50,16 @@ function Analyze() {
   const [content, setContent] = useState("");
   const [platform, setPlatform] = useState("lovable");
   const [projectId, setProjectId] = useState("none");
+  const [taskType, setTaskType] = useState("creation");
+  const [newProject, setNewProject] = useState("");
+  const [creatingProject, setCreatingProject] = useState(false);
   const [response, setResponse] = useState<AnalyzeResponse | null>(null);
 
   const queryClient = useQueryClient();
   const runAnalysis = useServerFn(analyzePrompt);
   const fetchProjects = useServerFn(listProjects);
   const fetchDashboard = useServerFn(getDashboardData);
+  const addProject = useServerFn(createProject);
   const { data: projects } = useQuery({ queryKey: ["projects"], queryFn: () => fetchProjects({}) });
   const { data: dashboard } = useQuery({
     queryKey: ["dashboard"],
@@ -70,6 +79,7 @@ function Analyze() {
           title: title.trim() || content.slice(0, 60),
           content,
           platform,
+          taskType,
           projectId: projectId === "none" ? null : projectId,
         },
       }),
@@ -77,6 +87,17 @@ function Analyze() {
       setResponse(data);
       void queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       toast.success(`Análise concluída (${data.usage.used}/${data.usage.limit} no mês)`);
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const projectMutation = useMutation({
+    mutationFn: () => addProject({ data: { name: newProject.trim(), platform } }),
+    onSuccess: async () => {
+      toast.success("Projeto criado");
+      setNewProject("");
+      setCreatingProject(false);
+      await queryClient.invalidateQueries({ queryKey: ["projects"] });
     },
     onError: (error: Error) => toast.error(error.message),
   });
@@ -96,8 +117,8 @@ function Analyze() {
           <CardTitle className="text-base">Prompt</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid gap-4 sm:grid-cols-3">
-            <div className="space-y-2 sm:col-span-1">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="space-y-2">
               <Label htmlFor="title">Título</Label>
               <Input
                 id="title"
@@ -123,6 +144,21 @@ function Analyze() {
               </Select>
             </div>
             <div className="space-y-2">
+              <Label>Tipo de tarefa</Label>
+              <Select value={taskType} onValueChange={setTaskType}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {TASK_TYPES.map((t) => (
+                    <SelectItem key={t.id} value={t.id}>
+                      {t.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
               <Label>Projeto</Label>
               <Select value={projectId} onValueChange={setProjectId}>
                 <SelectTrigger>
@@ -137,6 +173,30 @@ function Analyze() {
                   ))}
                 </SelectContent>
               </Select>
+              {creatingProject ? (
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Nome do novo projeto"
+                    value={newProject}
+                    onChange={(e) => setNewProject(e.target.value)}
+                  />
+                  <Button
+                    size="sm"
+                    onClick={() => projectMutation.mutate()}
+                    disabled={projectMutation.isPending || newProject.trim().length < 2}
+                  >
+                    Criar
+                  </Button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  className="text-xs text-primary underline-offset-2 hover:underline"
+                  onClick={() => setCreatingProject(true)}
+                >
+                  + Criar novo projeto
+                </button>
+              )}
             </div>
           </div>
 
@@ -184,7 +244,7 @@ function Analyze() {
                 ) : (
                   <Sparkles className="size-4" />
                 )}
-                Estimar consumo
+                ANALISAR PROMPT
               </Button>
               <p className="text-xs text-muted-foreground">
                 {remaining} de {limit} análises restantes neste mês.
