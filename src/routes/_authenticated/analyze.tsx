@@ -155,17 +155,42 @@ function Analyze() {
             </p>
           </div>
 
-          <Button
-            onClick={() => mutation.mutate()}
-            disabled={mutation.isPending || content.trim().length < 10}
-          >
-            {mutation.isPending ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <Sparkles className="size-4" />
-            )}
-            Estimar consumo
-          </Button>
+          {limitReached ? (
+            <div className="flex flex-col gap-3 rounded-xl border border-destructive/40 bg-destructive/5 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="mt-0.5 size-5 shrink-0 text-destructive" />
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-destructive">
+                    Limite mensal do plano {planName} atingido ({used}/{limit} análises).
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Você usou todas as suas {limit} análises deste mês. Faça upgrade do plano para
+                    continuar estimando prompts.
+                  </p>
+                </div>
+              </div>
+              <Button asChild size="sm" className="shrink-0">
+                <Link to="/settings">Fazer upgrade</Link>
+              </Button>
+            </div>
+          ) : (
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <Button
+                onClick={() => mutation.mutate()}
+                disabled={mutation.isPending || content.trim().length < 10}
+              >
+                {mutation.isPending ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <Sparkles className="size-4" />
+                )}
+                Estimar consumo
+              </Button>
+              <p className="text-xs text-muted-foreground">
+                {remaining} de {limit} análises restantes neste mês.
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
 
