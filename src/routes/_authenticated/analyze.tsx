@@ -50,7 +50,18 @@ function Analyze() {
   const queryClient = useQueryClient();
   const runAnalysis = useServerFn(analyzePrompt);
   const fetchProjects = useServerFn(listProjects);
+  const fetchDashboard = useServerFn(getDashboardData);
   const { data: projects } = useQuery({ queryKey: ["projects"], queryFn: () => fetchProjects({}) });
+  const { data: dashboard } = useQuery({
+    queryKey: ["dashboard"],
+    queryFn: () => fetchDashboard({}),
+  });
+
+  const used = dashboard?.used ?? 0;
+  const limit = dashboard?.plan.limit ?? 5;
+  const planName = dashboard?.plan.name ?? "Free";
+  const limitReached = used >= limit;
+  const remaining = Math.max(0, limit - used);
 
   const mutation = useMutation({
     mutationFn: () =>
