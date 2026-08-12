@@ -46,7 +46,10 @@ function AuthPage() {
     setLoading(true);
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
-    if (error) return toast.error(error.message);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
     navigate({ to: "/dashboard", replace: true });
   }
 
@@ -59,18 +62,27 @@ function AuthPage() {
       options: { data: { name }, emailRedirectTo: `${window.location.origin}/dashboard` },
     });
     setLoading(false);
-    if (error) return toast.error(error.message);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
     toast.success("Conta criada! Verifique seu e-mail se a confirmação estiver ativa.");
     const { data } = await supabase.auth.getSession();
     if (data.session) navigate({ to: "/dashboard", replace: true });
   }
 
   async function resetPassword() {
-    if (!email) return toast.error("Informe seu e-mail primeiro.");
+    if (!email) {
+      toast.error("Informe seu e-mail primeiro.");
+      return;
+    }
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/settings`,
     });
-    if (error) return toast.error(error.message);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
     toast.success("Enviamos um link de recuperação para seu e-mail.");
   }
 
@@ -78,7 +90,10 @@ function AuthPage() {
     const result = await lovable.auth.signInWithOAuth("google", {
       redirect_uri: window.location.origin,
     });
-    if (result.error) return toast.error("Não foi possível entrar com Google.");
+    if (result.error) {
+      toast.error("Não foi possível entrar com Google.");
+      return;
+    }
     if (result.redirected) return;
     navigate({ to: "/dashboard", replace: true });
   }
