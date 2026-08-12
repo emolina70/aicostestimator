@@ -52,6 +52,42 @@ export type Database = {
           },
         ]
       }
+      ai_usage_logs: {
+        Row: {
+          created_at: string
+          estimated_cost: number
+          id: string
+          input_tokens: number
+          model: string
+          operation: string
+          output_tokens: number
+          provider: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          estimated_cost?: number
+          id?: string
+          input_tokens?: number
+          model: string
+          operation: string
+          output_tokens?: number
+          provider: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          estimated_cost?: number
+          id?: string
+          input_tokens?: number
+          model?: string
+          operation?: string
+          output_tokens?: number
+          provider?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       estimator_parameters: {
         Row: {
           active: boolean
@@ -312,6 +348,7 @@ export type Database = {
           content: string
           created_at: string
           id: string
+          is_demo: boolean
           platform: string
           project_id: string | null
           task_type: string
@@ -323,6 +360,7 @@ export type Database = {
           content: string
           created_at?: string
           id?: string
+          is_demo?: boolean
           platform?: string
           project_id?: string | null
           task_type?: string
@@ -334,6 +372,7 @@ export type Database = {
           content?: string
           created_at?: string
           id?: string
+          is_demo?: boolean
           platform?: string
           project_id?: string | null
           task_type?: string

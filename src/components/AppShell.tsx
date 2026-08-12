@@ -1,9 +1,11 @@
 import { useState, type ReactNode } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { getMyRole } from "@/lib/analysis.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Gauge, History, FolderKanban, Settings, LogOut, Menu, X, Sparkles } from "lucide-react";
+import { Gauge, History, FolderKanban, Settings, LogOut, Menu, X, Sparkles, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const NAV = [
@@ -14,11 +16,16 @@ const NAV = [
   { to: "/settings", label: "Conta", icon: Settings },
 ] as const;
 
+const ADMIN_NAV = { to: "/admin", label: "Admin", icon: ShieldCheck } as const;
+
 export function AppShell({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const fetchRole = useServerFn(getMyRole);
+  const { data: role } = useQuery({ queryKey: ["my-role"], queryFn: () => fetchRole({}), retry: false });
+  const nav = role?.isAdmin ? [...NAV, ADMIN_NAV] : [...NAV];
 
   async function signOut() {
     await queryClient.cancelQueries();
@@ -41,7 +48,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </Link>
 
           <nav className="hidden items-center gap-1 lg:flex">
-            {NAV.map(({ to, label, icon: Icon }) => (
+            {nav.map(({ to, label, icon: Icon }) => (
               <Link
                 key={to}
                 to={to}
@@ -74,7 +81,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
         {open && (
           <nav className="border-t border-border px-4 pb-4 pt-2 lg:hidden">
-            {NAV.map(({ to, label, icon: Icon }) => (
+            {nav.map(({ to, label, icon: Icon }) => (
               <Link
                 key={to}
                 to={to}

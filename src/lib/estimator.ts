@@ -199,7 +199,14 @@ export type EstimationResult = {
   actionCount: number;
   factors: EstimationFactor[];
   recommendations: string[];
-  steps: { title: string; description: string; estimated: number }[];
+  steps: {
+    title: string;
+    description: string;
+    estimated: number;
+    min?: number;
+    max?: number;
+    prompt?: string;
+  }[];
   optimizedPrompt: string;
   estimatedOptimized: number;
   reductionPercentage: number;
@@ -219,12 +226,34 @@ function countMatches(text: string, words: string[]): number {
   return hits;
 }
 
+/** Pesos ajustáveis vindos da tabela `estimator_parameters` (nunca fixos no código). */
+export type EstimatorWeights = Partial<Record<Dimension, number>> & {
+  crud?: number;
+  complexity?: number;
+};
+
+export const DEFAULT_WEIGHTS: Required<Omit<EstimatorWeights, "crud" | "complexity">> & {
+  crud: number;
+  complexity: number;
+} = {
+  frontend: 0.18,
+  backend: 0.2,
+  database: 0.2,
+  authentication: 0.14,
+  integration: 0.16,
+  logic: 0.12,
+  crud: 1,
+  complexity: 0.62,
+};
+
 export function analyzePromptText(
   raw: string,
   platform: PlatformId = "lovable",
   overrides?: Partial<PlatformProfile>,
   taskType: TaskTypeId = "other",
+  weightOverrides?: EstimatorWeights,
 ): EstimationResult {
+  const W = { ...DEFAULT_WEIGHTS, ...weightOverrides };
   const text = norm(raw);
   const words = raw.trim().split(/\s+/).filter(Boolean);
   const wordCount = words.length;
@@ -261,17 +290,17 @@ export function analyzePromptText(
 
   const estimatedEntities = Math.max(
     1,
-    Math.round(entityHits * 1.5 + scores.database / 22 + requirementCount / 4),
+    Math.round((entityHits * 1.5 + scores.database / 22 + requirementCount / 4) * W.crud),
   );
-  const estimatedOperations = Math.max(1, Math.round(actionCount + scores.database / 30));
+  const estimatedOperations = Math.max(1, Math.round((actionCount + scores.database / 30) * W.crud));
 
   const weighted =
-    scores.frontend * 0.18 +
-    scores.backend * 0.2 +
-    scores.database * 0.2 +
-    scores.authentication * 0.14 +
-    scores.integration * 0.16 +
-    scores.logic * 0.12;
+    scores.frontend * W.frontend +
+    scores.backend * W.backend +
+    scores.database * W.database +
+    scores.authentication * W.authentication +
+    scores.integration * W.integration +
+    scores.logic * W.logic;
 
   const signalBreadth = Math.min(22, detectedSignals.length * 1.6);
   const requirementFactor = Math.min(18, requirementCount * 1.4);
@@ -281,11 +310,12 @@ export function analyzePromptText(
     Math.min(
       100,
       Math.round(
-        (weighted * 0.62 + signalBreadth + requirementFactor + sizeFactor + estimatedEntities * 1.1) *
+        (weighted * W.complexity + signalBreadth + requirementFactor + sizeFactor + estimatedEntities * 1.1) *
           task.effort,
       ),
     ),
   );
+
 
   const complexityLevel = complexityLevelOf(complexityScore);
 
@@ -324,26 +354,89 @@ export function analyzePromptText(
   if (factors.length === 0)
     factors.push({ label: "Escopo enxuto", impact: "low", detail: "Poucos sinais de complexidade identificados." });
 
-  const recommendations: string[] = [];
-  if (wordCount > 200 || requirementCount > 10) recommendations.push("Divida o prompt em etapas menores e executáveis de forma independente.");
-  if (vagueness > 0) recommendations.push("Substitua termos genéricos (\"completo\", \"moderno\", \"etc.\") por requisitos explícitos.");
-  if (scores.database > 40) recommendations.push("Descreva as tabelas e campos exatos para evitar remodelagens de banco.");
-  if (scores.integration > 40) recommendations.push("Implemente integrações externas em um prompt separado, após o núcleo funcionar.");
-  if (scores.frontend > 40) recommendations.push("Defina o design system antes de pedir várias telas de uma vez.");
-  if (scores.authentication > 40) recommendations.push("Trate autenticação, papéis e RLS em uma etapa dedicada.");
-  if (!hasStructure) recommendations.push("Estruture o pedido em lista numerada: um requisito por linha.");
-  if (recommendations.length === 0) recommendations.push("O prompt já está enxuto; mantenha um objetivo por execução.");
-
-  const steps: { title: string; description: string; estimated: number }[] = [];
-  const addStep = (title: string, description: string, weight: number) =>
-    steps.push({ title, description, estimated: round(Math.max(0.5, expected * weight)) });
+  const steps: EstimationResult["steps"] = [];
+  const addStep = (
+    title: string,
+    description: string,
+    weight: number,
+    dims: Dimension[],
+  ) => {
+    const est = round(Math.max(0.5, expected * weight));
+    steps.push({
+      title,
+      description,
+      estimated: est,
+      min: round(Math.max(0.3, est * profile.minFactor)),
+      max: round(est * Math.min(1.9, profile.maxFactor) * spread),
+      prompt: buildStepPrompt(raw, title, description, dims),
+    });
+  };
   if (scores.database > 20 || scores.authentication > 20)
-    addStep("1. Fundação de dados e acesso", "Criar tabelas, políticas de segurança e autenticação.", 0.3);
-  if (scores.frontend > 20) addStep("2. Interface principal", "Design system e telas essenciais com dados reais.", 0.3);
+    addStep(
+      "Etapa 1 — Estrutura do banco de dados e acesso",
+      "Criar tabelas, relacionamentos, políticas de segurança e autenticação.",
+      0.3,
+      ["database", "authentication"],
+    );
+  if (scores.frontend > 20)
+    addStep(
+      "Etapa 2 — CRUD e telas",
+      "Design system, telas essenciais e operações de criar, editar, listar e excluir com dados reais.",
+      0.3,
+      ["frontend"],
+    );
   if (scores.logic > 20 || scores.backend > 20)
-    addStep("3. Regras e lógica de servidor", "Cálculos, validações e processamento protegido.", 0.25);
-  if (scores.integration > 20) addStep("4. Integrações externas", "Conectar serviços de terceiros e tratar erros.", 0.2);
-  if (steps.length === 0) addStep("1. Execução única", "O escopo cabe em uma única execução.", 1);
+    addStep(
+      "Etapa 3 — Regras de negócio e lógica de servidor",
+      "Cálculos, validações e processamento protegido no servidor.",
+      0.25,
+      ["logic", "backend"],
+    );
+  if (scores.integration > 20)
+    addStep(
+      "Etapa 4 — Integrações externas",
+      "Conectar serviços de terceiros, tratar erros e proteger chaves.",
+      0.2,
+      ["integration"],
+    );
+  if (steps.length === 0)
+    addStep("Etapa única", "O escopo cabe em uma única execução.", 1, [
+      "frontend",
+      "backend",
+      "database",
+      "authentication",
+      "integration",
+      "logic",
+    ]);
+
+  const recommendations: string[] = [];
+  if (requirementCount > 6 || complexityScore > 55)
+    recommendations.push(
+      `Este prompt possui muitas responsabilidades em uma única solicitação (${requirementCount} requisitos identificados).`,
+    );
+  if (steps.length > 1) recommendations.push(`Recomendamos dividir em ${steps.length} etapas.`);
+  if ((scores.database > 20 || scores.authentication > 20) && scores.frontend > 20)
+    recommendations.push(
+      "Banco de dados e autenticação devem ser implementados antes das telas e do dashboard.",
+    );
+  if (scores.integration > 20)
+    recommendations.push("Separar integrações externas das funcionalidades principais.");
+  if (wordCount > 200 || requirementCount > 10)
+    recommendations.push("Divida o prompt em pedidos menores e executáveis de forma independente.");
+  if (vagueness > 0)
+    recommendations.push(
+      'Substitua termos genéricos ("completo", "moderno", "etc.") por requisitos explícitos.',
+    );
+  if (scores.database > 40)
+    recommendations.push("Descreva as tabelas e campos exatos para evitar remodelagens de banco.");
+  if (scores.frontend > 40)
+    recommendations.push("Defina o design system antes de pedir várias telas de uma vez.");
+  if (scores.authentication > 40)
+    recommendations.push("Trate autenticação, papéis e políticas de acesso em uma etapa dedicada.");
+  if (!hasStructure)
+    recommendations.push("Estruture o pedido em lista numerada: um requisito por linha.");
+  if (recommendations.length === 0)
+    recommendations.push("O prompt já está enxuto; mantenha um objetivo por execução.");
 
   const optimizedPrompt = buildOptimizedPrompt(raw, scores, estimatedEntities, taskType, platform, steps);
   const optimizedReduction = Math.min(
@@ -527,3 +620,32 @@ function buildOptimizedPrompt(
     .trim();
 }
 
+
+/** Monta o prompt executável de uma etapa, reaproveitando os trechos do prompt original. */
+function buildStepPrompt(raw: string, title: string, description: string, dims: Dimension[]): string {
+  const units = raw
+    .split(/\n+/)
+    .map((l) => l.replace(/^\s*(?:[-*•–]|\d+[.)])\s+/, "").trim())
+    .filter((l) => l.length > 2);
+
+  const selected = units.filter((u) => {
+    const dim = classifyLine(u);
+    return dim !== null && dims.includes(dim);
+  });
+
+  const items = (selected.length > 0 ? selected : units).map(
+    (l, i) => `${i + 1}. ${l.charAt(0).toUpperCase()}${l.slice(1)}`,
+  );
+
+  return [
+    `# ${title}`,
+    description,
+    "",
+    "Implemente nesta execução apenas:",
+    ...items,
+    "",
+    "Restrições:",
+    "- Não implemente nada fora dos itens acima; as demais etapas virão em prompts separados.",
+    "- Reutilize componentes e estruturas já existentes no projeto.",
+  ].join("\n");
+}
