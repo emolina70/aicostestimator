@@ -378,39 +378,152 @@ export function analyzePromptText(
   };
 }
 
-function buildOptimizedPrompt(raw: string, scores: Record<Dimension, number>, entities: number): string {
-  const lines = raw
-    .split(/\n+/)
-    .map((l) => l.replace(/^\s*(?:[-*•]|\d+[.)])\s+/, "").trim())
-    .filter((l) => l.length > 2);
+const DIMENSION_SECTIONS: { dim: Dimension; title: string }[] = [
+  { dim: "frontend", title: "Interface (frontend)" },
+  { dim: "backend", title: "Servidor (backend)" },
+  { dim: "database", title: "Dados e persistência" },
+  { dim: "authentication", title: "Autenticação e permissões" },
+  { dim: "integration", title: "Integrações externas" },
+  { dim: "logic", title: "Regras de negócio e lógica" },
+];
 
-  const requirements = (lines.length > 1 ? lines : raw.split(/[.;]\s+/))
-    .map((l) => l.trim())
-    .filter(Boolean)
-    .slice(0, 8)
-    .map((l, i) => `${i + 1}. ${l.charAt(0).toUpperCase()}${l.slice(1)}`);
+/** Classifica uma linha do prompt original na dimensão mais provável. */
+function classifyLine(line: string): Dimension | null {
+  const t = norm(line);
+  const totals: Record<Dimension, number> = {
+    frontend: 0, backend: 0, database: 0, authentication: 0, integration: 0, logic: 0,
+  };
+  for (const s of SIGNALS) {
+    if (s.patterns.some((p) => p.test(t))) totals[s.dimension] += s.weight;
+  }
+  let best: Dimension | null = null;
+  let bestScore = 0;
+  for (const dim of Object.keys(totals) as Dimension[]) {
+    if (totals[dim] > bestScore) {
+      bestScore = totals[dim];
+      best = dim;
+    }
+  }
+  return best;
+}
+
+/**
+ * Gera uma versão OTIMIZADA do prompt: mantém 100% do conteúdo escrito pelo
+ * usuário (nada é cortado ou resumido), apenas reescreve a estrutura —
+ * requisitos numerados, agrupados por área, com escopo técnico, ordem de
+ * execução, restrições e critérios de aceite.
+ */
+function buildOptimizedPrompt(
+  raw: string,
+  scores: Record<Dimension, number>,
+  entities: number,
+  taskType: TaskTypeId,
+  platform: PlatformId,
+  steps: { title: string; description: string }[],
+): string {
+  const source = raw.trim();
+  if (!source) return "";
+
+  // 1. Quebra em unidades de requisito preservando o texto original.
+  const byLine = source
+    .split(/\n+/)
+    .map((l) => l.replace(/^\s*(?:[-*•–]|\d+[.)])\s+/, "").trim())
+    .filter((l) => l.length > 0);
+
+  const units: string[] = [];
+  for (const line of byLine) {
+    if (line.length > 220) {
+      const parts = line
+        .split(/(?<=[.;])\s+/)
+        .map((p) => p.trim())
+        .filter(Boolean);
+      units.push(...(parts.length > 1 ? parts : [line]));
+    } else {
+      units.push(line);
+    }
+  }
+
+  const titleLine = units[0] ?? "";
+  const isHeading = units.length > 1 && titleLine.length < 120 && !/[.;:]$/.test(titleLine) === false;
+  const objective = titleLine.replace(/\s+/g, " ").trim();
+
+  const body = units.length > 1 && isHeading ? units.slice(1) : units;
+
+  // 2. Agrupa por área, mantendo a ordem original dentro de cada grupo.
+  const groups = new Map<Dimension | "general", string[]>();
+  for (const u of body) {
+    const dim = classifyLine(u) ?? "general";
+    const list = groups.get(dim) ?? [];
+    list.push(u);
+    groups.set(dim, list);
+  }
+
+  const cap = (s: string) => `${s.charAt(0).toUpperCase()}${s.slice(1)}`;
+  let counter = 0;
+  const numbered = (items: string[]) =>
+    items.map((i) => `${(counter += 1)}. ${cap(i.replace(/\s+$/, ""))}`);
+
+  const sections: string[] = [];
+  const general = groups.get("general");
+  if (general?.length) {
+    sections.push("Requisitos gerais:", ...numbered(general), "");
+  }
+  for (const { dim, title } of DIMENSION_SECTIONS) {
+    const items = groups.get(dim);
+    if (items?.length) sections.push(`${title}:`, ...numbered(items), "");
+  }
 
   const scope: string[] = [];
-  if (scores.database > 20) scope.push(`modelagem de dados (~${entities} entidades) com regras de acesso por usuário`);
-  if (scores.authentication > 20) scope.push("autenticação por e-mail/senha");
-  if (scores.frontend > 20) scope.push("interface responsiva usando o design system existente");
-  if (scores.backend > 20) scope.push("lógica sensível apenas no servidor");
-  if (scores.integration > 20) scope.push("integrações externas isoladas em uma etapa posterior");
+  if (scores.database > 20)
+    scope.push(`modelagem de dados com aproximadamente ${entities} entidades e regras de acesso por usuário`);
+  if (scores.authentication > 20) scope.push("autenticação e autorização com políticas de acesso por linha");
+  if (scores.frontend > 20) scope.push("interface responsiva reutilizando o design system existente");
+  if (scores.backend > 20) scope.push("lógica sensível executada apenas no servidor");
+  if (scores.integration > 20) scope.push("integrações externas com tratamento explícito de erro e chaves fora do frontend");
+  if (scores.logic > 20) scope.push("regras de negócio centralizadas e testáveis");
+
+  const taskLabel = TASK_TYPES.find((t) => t.id === taskType)?.label;
+  const platformLabel = PLATFORMS.find((p) => p.id === platform)?.label;
+
+  const header: string[] = [
+    "# Objetivo",
+    objective || "Implementar exatamente os requisitos listados abaixo.",
+    "",
+  ];
+  if (taskLabel || platformLabel) {
+    header.push(
+      `Contexto: ${[platformLabel && `plataforma ${platformLabel}`, taskLabel && `tipo de tarefa ${taskLabel.toLowerCase()}`]
+        .filter(Boolean)
+        .join(" · ")}.`,
+      "",
+    );
+  }
+
+  const order = steps.length
+    ? ["# Ordem de execução", ...steps.map((s, i) => `${i + 1}. ${s.title.replace(/^\d+\.\s*/, "")} — ${s.description}`), ""]
+    : [];
 
   return [
-    "Objetivo (uma frase): entregue apenas o escopo listado abaixo.",
+    ...header,
+    "# Requisitos (implementar todos, sem adicionar nada além)",
+    ...sections,
+    scope.length ? "# Escopo técnico" : "",
+    ...(scope.length ? scope.map((s) => `- ${cap(s)}.`) : []),
+    scope.length ? "" : "",
+    ...order,
+    "# Restrições",
+    "- Implemente somente os requisitos numerados acima; não crie funcionalidades extras.",
+    "- Reutilize componentes, tokens de estilo e estruturas já existentes no projeto.",
+    "- Prefira a menor mudança que atenda a cada requisito.",
+    "- Nunca exponha chaves ou lógica sensível no frontend.",
     "",
-    "Requisitos explícitos:",
-    ...requirements,
-    "",
-    scope.length ? `Escopo técnico: ${scope.join("; ")}.` : "",
-    "",
-    "Restrições:",
-    "- Não implemente funcionalidades não listadas acima.",
-    "- Reutilize componentes e tokens de estilo já existentes.",
-    "- Priorize a menor mudança que atenda ao requisito.",
+    "# Critérios de aceite",
+    `- Todos os ${counter} requisitos acima verificáveis na aplicação em execução.`,
+    "- Sem erros de build, de tipos ou no console.",
     "- Ao final, liste o que ficou fora do escopo para a próxima etapa.",
   ]
-    .filter((l) => l !== "")
-    .join("\n");
+    .filter((l, i, arr) => !(l === "" && arr[i - 1] === ""))
+    .join("\n")
+    .trim();
 }
+
