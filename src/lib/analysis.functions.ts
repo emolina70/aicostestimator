@@ -1,12 +1,18 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { analyzePromptText, type EstimationResult, type PlatformId } from "@/lib/estimator";
+import {
+  analyzePromptText,
+  type EstimationResult,
+  type PlatformId,
+  type TaskTypeId,
+} from "@/lib/estimator";
 
 const analyzeInput = z.object({
   title: z.string().min(1).max(140),
   content: z.string().min(10).max(20000),
   platform: z.string().default("lovable"),
+  taskType: z.string().default("other"),
   projectId: z.string().uuid().nullable().optional(),
 });
 
@@ -72,7 +78,8 @@ export const analyzePrompt = createServerFn({ method: "POST" })
       if (key) overrides[key] = Number(p.parameter_value);
     }
 
-    const result = analyzePromptText(data.content, platform, overrides);
+    const taskType = data.taskType as TaskTypeId;
+    const result = analyzePromptText(data.content, platform, overrides, taskType);
 
     const { data: prompt, error: promptError } = await supabase
       .from("prompts")
@@ -82,6 +89,7 @@ export const analyzePrompt = createServerFn({ method: "POST" })
         title: data.title,
         content: data.content,
         platform,
+        task_type: taskType,
       })
       .select("id")
       .single();
@@ -93,6 +101,7 @@ export const analyzePrompt = createServerFn({ method: "POST" })
         prompt_id: prompt.id,
         user_id: userId,
         platform,
+        task_type: taskType,
         complexity_score: result.complexityScore,
         confidence_score: result.confidenceScore,
         estimated_min: result.estimatedMin,
@@ -142,48 +151,131 @@ export const getDashboardData = createServerFn({ method: "GET" })
     const period = new Date();
     const periodMonth = `${period.getUTCFullYear()}-${String(period.getUTCMonth() + 1).padStart(2, "0")}-01`;
 
-    const [{ data: profile }, { data: usageRow }, { data: analyses }] = await Promise.all([
-      supabase
-        .from("profiles")
-        .select("id, name, email, plans:plan_id (code, name, monthly_analysis_limit)")
-        .eq("user_id", userId)
-        .maybeSingle(),
-      supabase
-        .from("usage_history")
-        .select("analyses_count")
-        .eq("user_id", userId)
-        .eq("period_month", periodMonth)
-        .maybeSingle(),
-      supabase
-        .from("prompt_analyses")
-        .select(
-          "id, created_at, platform, complexity_score, confidence_score, estimated_min, estimated_expected, estimated_max, prompts:prompt_id (title)",
-        )
-        .eq("user_id", userId)
-        .order("created_at", { ascending: false })
-        .limit(20),
-    ]);
+    const [{ data: profile }, { data: usageRow }, { data: analyses }, { data: actuals }, { data: optimizations }] =
+      await Promise.all([
+        supabase
+          .from("profiles")
+          .select("id, name, email, plans:plan_id (code, name, monthly_analysis_limit)")
+          .eq("user_id", userId)
+          .maybeSingle(),
+        supabase
+          .from("usage_history")
+          .select("analyses_count")
+          .eq("user_id", userId)
+          .eq("period_month", periodMonth)
+          .maybeSingle(),
+        supabase
+          .from("prompt_analyses")
+          .select(
+            "id, prompt_id, created_at, platform, task_type, complexity_score, confidence_score, estimated_min, estimated_expected, estimated_max, prompts:prompt_id (title)",
+          )
+          .eq("user_id", userId)
+          .order("created_at", { ascending: false })
+          .limit(500),
+        supabase
+          .from("actual_usage")
+          .select("prompt_id, actual_credits, execution_date")
+          .eq("user_id", userId),
+        supabase
+          .from("prompt_optimizations")
+          .select("prompt_id, estimated_original, estimated_optimized")
+          .eq("user_id", userId),
+      ]);
 
     const plan = (profile?.plans ?? null) as
       | { code: string; name: string; monthly_analysis_limit: number }
       | null;
 
-    return {
-      profile: { name: profile?.name ?? null, email: profile?.email ?? null },
-      plan: { name: plan?.name ?? "Free", code: plan?.code ?? "free", limit: plan?.monthly_analysis_limit ?? 5 },
-      used: usageRow?.analyses_count ?? 0,
-      analyses: (analyses ?? []).map((a) => ({
+    const actualByPrompt = new Map<string, number>();
+    for (const r of actuals ?? []) {
+      const prev = actualByPrompt.get(r.prompt_id) ?? 0;
+      actualByPrompt.set(r.prompt_id, prev + Number(r.actual_credits));
+    }
+
+    const rows = (analyses ?? []).map((a) => {
+      const expected = Number(a.estimated_expected);
+      const actual = actualByPrompt.get(a.prompt_id) ?? null;
+      const accuracy =
+        actual !== null && actual > 0
+          ? Math.max(0, Math.round((1 - Math.abs(expected - actual) / actual) * 100))
+          : null;
+      return {
         id: a.id,
+        promptId: a.prompt_id,
         createdAt: a.created_at,
         platform: a.platform,
+        taskType: (a as { task_type?: string }).task_type ?? "other",
         title: (a.prompts as { title: string } | null)?.title ?? "Prompt",
         complexity: Number(a.complexity_score),
         confidence: Number(a.confidence_score),
         min: Number(a.estimated_min),
-        expected: Number(a.estimated_expected),
+        expected,
         max: Number(a.estimated_max),
-      })),
+        actual,
+        accuracy,
+      };
+    });
+
+    const totalEstimated = rows.reduce((s, r) => s + r.expected, 0);
+    const totalActual = rows.reduce((s, r) => s + (r.actual ?? 0), 0);
+    const withAccuracy = rows.filter((r) => r.accuracy !== null);
+    const avgAccuracy =
+      withAccuracy.length > 0
+        ? Math.round(withAccuracy.reduce((s, r) => s + (r.accuracy ?? 0), 0) / withAccuracy.length)
+        : null;
+    const savings = (optimizations ?? []).reduce(
+      (s, o) => s + Math.max(0, Number(o.estimated_original) - Number(o.estimated_optimized)),
+      0,
+    );
+
+    // Série temporal agregada por dia (ordem cronológica).
+    const buckets = new Map<
+      string,
+      { date: string; estimated: number; actual: number; count: number; complexity: number; accSum: number; accCount: number }
+    >();
+    for (const r of rows) {
+      const date = String(r.createdAt).slice(0, 10);
+      const b =
+        buckets.get(date) ??
+        { date, estimated: 0, actual: 0, count: 0, complexity: 0, accSum: 0, accCount: 0 };
+      b.estimated += r.expected;
+      b.actual += r.actual ?? 0;
+      b.count += 1;
+      b.complexity += r.complexity;
+      if (r.accuracy !== null) {
+        b.accSum += r.accuracy;
+        b.accCount += 1;
+      }
+      buckets.set(date, b);
+    }
+    const series = [...buckets.values()]
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .map((b) => ({
+        date: b.date,
+        estimated: Math.round(b.estimated * 10) / 10,
+        actual: Math.round(b.actual * 10) / 10,
+        count: b.count,
+        complexity: Math.round(b.complexity / b.count),
+        accuracy: b.accCount > 0 ? Math.round(b.accSum / b.accCount) : null,
+      }));
+
+    return {
+      profile: { name: profile?.name ?? null, email: profile?.email ?? null },
+      plan: { name: plan?.name ?? "Free", code: plan?.code ?? "free", limit: plan?.monthly_analysis_limit ?? 5 },
+      used: usageRow?.analyses_count ?? 0,
+      metrics: {
+        totalAnalyses: rows.length,
+        totalEstimated: Math.round(totalEstimated * 10) / 10,
+        totalActual: Math.round(totalActual * 10) / 10,
+        avgAccuracy,
+        savings: Math.round(savings * 10) / 10,
+        avgComplexity:
+          rows.length > 0 ? Math.round(rows.reduce((s, r) => s + r.complexity, 0) / rows.length) : 0,
+      },
+      series,
+      analyses: rows.slice(0, 20),
     };
+
   });
 
 export const getAnalysisDetail = createServerFn({ method: "GET" })

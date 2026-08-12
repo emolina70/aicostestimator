@@ -16,6 +16,48 @@ const DIMENSION_LABELS: Record<string, string> = {
 
 const IMPACT_LABEL = { low: "Baixo", medium: "Médio", high: "Alto" } as const;
 
+const LEVEL_COLOR: Record<string, string> = {
+  "Muito baixa": "text-success",
+  Baixa: "text-success",
+  Média: "text-warning",
+  Alta: "text-destructive",
+  "Muito alta": "text-destructive",
+};
+
+export function ComplexityGauge({ result }: { result: EstimationResult }) {
+  const pct = Math.min(100, Math.max(0, result.complexityScore));
+  return (
+    <Card className="surface">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base font-medium uppercase tracking-wide text-muted-foreground">
+          Complexidade
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex items-baseline gap-3">
+          <p className="font-display text-5xl font-semibold">{result.complexityScore}</p>
+          <span className="text-lg text-muted-foreground">/ 100</span>
+          <span
+            className={`ml-auto text-sm font-semibold uppercase tracking-wide ${LEVEL_COLOR[result.complexityLevel] ?? "text-foreground"}`}
+          >
+            {result.complexityLevel}
+          </span>
+        </div>
+        <div className="h-2.5 w-full overflow-hidden rounded-full bg-secondary">
+          <div className="meter-bar h-full rounded-full" style={{ width: `${pct}%` }} />
+        </div>
+        <div className="flex justify-between text-[10px] uppercase tracking-wide text-muted-foreground">
+          <span>Muito baixa</span>
+          <span>Baixa</span>
+          <span>Média</span>
+          <span>Alta</span>
+          <span>Muito alta</span>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export function CreditRange({ result }: { result: EstimationResult }) {
   const span = Math.max(result.estimatedMax - result.estimatedMin, 0.001);
   const pos = ((result.estimatedExpected - result.estimatedMin) / span) * 100;
@@ -28,6 +70,11 @@ export function CreditRange({ result }: { result: EstimationResult }) {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
+        <p className="font-mono text-sm text-muted-foreground">
+          {result.estimatedMin} – <span className="text-primary">{result.estimatedExpected}</span> –{" "}
+          {result.estimatedMax} créditos · confiança {result.confidenceScore}%
+        </p>
+
         <div className="flex flex-wrap items-end gap-x-8 gap-y-3">
           <div>
             <p className="font-display text-5xl font-semibold text-gradient">
@@ -91,20 +138,19 @@ export function AnalysisReport({
 
   return (
     <div className="grid gap-6 lg:grid-cols-2">
-      <div className="space-y-6 lg:col-span-2">
-        <CreditRange result={result} />
-      </div>
+      <CreditRange result={result} />
+      <ComplexityGauge result={result} />
 
       <Card className="surface">
         <CardHeader>
-          <CardTitle className="text-base">Dimensões de complexidade</CardTitle>
+          <CardTitle className="text-base">Fatores da estimativa</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {Object.entries(result.scores).map(([dim, value]) => (
             <div key={dim}>
               <div className="mb-1 flex justify-between text-sm">
                 <span className="text-muted-foreground">{DIMENSION_LABELS[dim] ?? dim}</span>
-                <span className="font-mono text-xs text-foreground">{value}</span>
+                <span className="font-mono text-xs text-foreground">{value}%</span>
               </div>
               <div className="h-1.5 w-full overflow-hidden rounded-full bg-secondary">
                 <div className="h-full rounded-full bg-primary" style={{ width: `${value}%` }} />

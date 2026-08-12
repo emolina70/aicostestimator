@@ -5,7 +5,21 @@ import { getDashboardData } from "@/lib/analysis.functions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Sparkles, TrendingUp, Gauge, Wallet } from "lucide-react";
+import {
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+  Legend,
+} from "recharts";
+import { Sparkles, Gauge, Wallet, Target, PiggyBank, Receipt } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
@@ -19,16 +33,53 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
   component: Dashboard,
 });
 
+const chartTheme = {
+  grid: "var(--border)",
+  axis: "var(--muted-foreground)",
+};
+
+function ChartCard({
+  title,
+  subtitle,
+  children,
+}: {
+  title: string;
+  subtitle: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Card className="surface">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base">{title}</CardTitle>
+        <p className="text-xs text-muted-foreground">{subtitle}</p>
+      </CardHeader>
+      <CardContent className="h-64">
+        <ResponsiveContainer width="100%" height="100%">
+          {children as React.ReactElement}
+        </ResponsiveContainer>
+      </CardContent>
+    </Card>
+  );
+}
+
 function Dashboard() {
   const fetchData = useServerFn(getDashboardData);
   const { data, isLoading } = useQuery({ queryKey: ["dashboard"], queryFn: () => fetchData({}) });
 
   const analyses = data?.analyses ?? [];
-  const avg =
-    analyses.length > 0
-      ? Math.round((analyses.reduce((s, a) => s + a.expected, 0) / analyses.length) * 10) / 10
-      : 0;
-  const total = Math.round(analyses.reduce((s, a) => s + a.expected, 0) * 10) / 10;
+  const m = data?.metrics;
+  const series = (data?.series ?? []).map((s) => ({
+    ...s,
+    label: new Date(`${s.date}T00:00:00`).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }),
+  }));
+  const avg = m && m.totalAnalyses > 0 ? Math.round((m.totalEstimated / m.totalAnalyses) * 10) / 10 : 0;
+
+  const tooltipStyle = {
+    background: "var(--popover)",
+    border: "1px solid var(--border)",
+    borderRadius: 12,
+    fontSize: 12,
+  } as const;
 
   return (
     <div className="space-y-8">
@@ -46,32 +97,119 @@ function Dashboard() {
         </Button>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <Stat
-          icon={<Gauge className="size-4" />}
-          label="Análises no mês"
-          value={isLoading ? "—" : `${data?.used ?? 0}/${data?.plan.limit ?? 0}`}
-          hint={`Plano ${data?.plan.name ?? "Free"}`}
+          icon={<Sparkles className="size-4" />}
+          label="Total de análises"
+          value={isLoading ? "—" : String(m?.totalAnalyses ?? 0)}
+          hint={`${data?.used ?? 0}/${data?.plan.limit ?? 0} no mês · plano ${data?.plan.name ?? "Free"}`}
         />
         <Stat
           icon={<Wallet className="size-4" />}
-          label="Créditos estimados (total)"
-          value={isLoading ? "—" : String(total)}
-          hint="Soma dos cenários mais prováveis"
+          label="Créditos estimados"
+          value={isLoading ? "—" : String(m?.totalEstimated ?? 0)}
+          hint={`Média de ${avg} por prompt`}
         />
         <Stat
-          icon={<TrendingUp className="size-4" />}
-          label="Média por prompt"
-          value={isLoading ? "—" : String(avg)}
-          hint="Cenário mais provável"
+          icon={<Receipt className="size-4" />}
+          label="Créditos reais"
+          value={isLoading ? "—" : String(m?.totalActual ?? 0)}
+          hint="Informado por você nas análises"
         />
         <Stat
-          icon={<Sparkles className="size-4" />}
-          label="Prompts analisados"
-          value={isLoading ? "—" : String(analyses.length)}
-          hint="Últimas 20 análises"
+          icon={<Target className="size-4" />}
+          label="Precisão média"
+          value={isLoading ? "—" : m?.avgAccuracy !== null && m?.avgAccuracy !== undefined ? `${m.avgAccuracy}%` : "—"}
+          hint="Estimativa × consumo real informado"
+        />
+        <Stat
+          icon={<PiggyBank className="size-4" />}
+          label="Economia estimada"
+          value={isLoading ? "—" : String(m?.savings ?? 0)}
+          hint="Se os prompts otimizados fossem usados"
+        />
+        <Stat
+          icon={<Gauge className="size-4" />}
+          label="Complexidade média"
+          value={isLoading ? "—" : `${m?.avgComplexity ?? 0}/100`}
+          hint="Score médio dos prompts analisados"
         />
       </div>
+
+      {series.length > 0 && (
+        <div className="grid gap-4 lg:grid-cols-2">
+          <ChartCard title="Consumo estimado × real" subtitle="Créditos por dia">
+            <AreaChart data={series}>
+              <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.grid} vertical={false} />
+              <XAxis dataKey="label" stroke={chartTheme.axis} fontSize={11} tickLine={false} />
+              <YAxis stroke={chartTheme.axis} fontSize={11} tickLine={false} axisLine={false} />
+              <Tooltip contentStyle={tooltipStyle} />
+              <Legend wrapperStyle={{ fontSize: 12 }} />
+              <Area
+                type="monotone"
+                dataKey="estimated"
+                name="Estimado"
+                stroke="var(--primary)"
+                fill="var(--primary)"
+                fillOpacity={0.18}
+              />
+              <Area
+                type="monotone"
+                dataKey="actual"
+                name="Real"
+                stroke="var(--success)"
+                fill="var(--success)"
+                fillOpacity={0.14}
+              />
+            </AreaChart>
+          </ChartCard>
+
+          <ChartCard title="Precisão da estimativa" subtitle="% de acerto frente ao consumo real">
+            <LineChart data={series}>
+              <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.grid} vertical={false} />
+              <XAxis dataKey="label" stroke={chartTheme.axis} fontSize={11} tickLine={false} />
+              <YAxis domain={[0, 100]} stroke={chartTheme.axis} fontSize={11} tickLine={false} axisLine={false} />
+              <Tooltip contentStyle={tooltipStyle} />
+              <Line
+                type="monotone"
+                dataKey="accuracy"
+                name="Precisão (%)"
+                stroke="var(--primary)"
+                strokeWidth={2}
+                connectNulls
+                dot={false}
+              />
+            </LineChart>
+          </ChartCard>
+
+          <ChartCard title="Prompts analisados" subtitle="Quantidade por dia">
+            <BarChart data={series}>
+              <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.grid} vertical={false} />
+              <XAxis dataKey="label" stroke={chartTheme.axis} fontSize={11} tickLine={false} />
+              <YAxis allowDecimals={false} stroke={chartTheme.axis} fontSize={11} tickLine={false} axisLine={false} />
+              <Tooltip contentStyle={tooltipStyle} />
+              <Bar dataKey="count" name="Prompts" fill="var(--primary)" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ChartCard>
+
+          <ChartCard title="Complexidade média" subtitle="Score de 0 a 100 por dia">
+            <LineChart data={series}>
+              <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.grid} vertical={false} />
+              <XAxis dataKey="label" stroke={chartTheme.axis} fontSize={11} tickLine={false} />
+              <YAxis domain={[0, 100]} stroke={chartTheme.axis} fontSize={11} tickLine={false} axisLine={false} />
+              <Tooltip contentStyle={tooltipStyle} />
+              <Line
+                type="monotone"
+                dataKey="complexity"
+                name="Complexidade"
+                stroke="var(--warning)"
+                strokeWidth={2}
+                dot={false}
+              />
+            </LineChart>
+          </ChartCard>
+        </div>
+      )}
 
       <Card className="surface">
         <CardHeader className="flex-row items-center justify-between space-y-0">
@@ -108,6 +246,11 @@ function Dashboard() {
                       </p>
                     </div>
                     <div className="flex items-center gap-3">
+                      {a.actual !== null && (
+                        <Badge variant="outline" className="border-success/50 text-success">
+                          real {a.actual}
+                        </Badge>
+                      )}
                       <Badge variant="outline">confiança {a.confidence}%</Badge>
                       <span className="font-mono text-sm">
                         {a.min} – <span className="text-primary">{a.expected}</span> – {a.max}
@@ -150,3 +293,4 @@ function Stat({
     </Card>
   );
 }
+
