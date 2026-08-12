@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { getAnalysisDetail } from "@/lib/analysis.functions";
 import { complexityLevelOf, type EstimationResult } from "@/lib/estimator";
 import { AnalysisReport } from "@/components/AnalysisReport";
+import { ActualUsageForm } from "@/components/ActualUsageForm";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
@@ -90,18 +91,12 @@ function AnalysisDetail() {
         </p>
       </div>
 
-      <AnalysisReport result={result} />
+      <ActualUsageForm
+        promptId={String(a["prompt_id"])}
+        expected={result.estimatedExpected}
+      />
 
-      <Card className="surface">
-        <CardHeader>
-          <CardTitle className="text-base">Prompt original</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <pre className="max-h-80 overflow-auto whitespace-pre-wrap rounded-lg bg-secondary/60 p-4 font-mono text-xs text-muted-foreground">
-            {prompt?.content}
-          </pre>
-        </CardContent>
-      </Card>
+      <AnalysisReport result={result} originalPrompt={prompt?.content ?? ""} />
     </div>
   );
 }
