@@ -19,7 +19,7 @@ import {
   CartesianGrid,
   Legend,
 } from "recharts";
-import { Sparkles, TrendingUp, Gauge, Wallet, Target, PiggyBank, Receipt } from "lucide-react";
+import { Sparkles, Gauge, Wallet, Target, PiggyBank, Receipt } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
@@ -34,8 +34,8 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
 });
 
 const chartTheme = {
-  grid: "hsl(var(--border))",
-  axis: "hsl(var(--muted-foreground))",
+  grid: "var(--border)",
+  axis: "var(--muted-foreground)",
 };
 
 function ChartCard({
@@ -75,8 +75,8 @@ function Dashboard() {
   const avg = m && m.totalAnalyses > 0 ? Math.round((m.totalEstimated / m.totalAnalyses) * 10) / 10 : 0;
 
   const tooltipStyle = {
-    background: "hsl(var(--popover))",
-    border: "1px solid hsl(var(--border))",
+    background: "var(--popover)",
+    border: "1px solid var(--border)",
     borderRadius: 12,
     fontSize: 12,
   } as const;
@@ -149,16 +149,16 @@ function Dashboard() {
                 type="monotone"
                 dataKey="estimated"
                 name="Estimado"
-                stroke="hsl(var(--primary))"
-                fill="hsl(var(--primary))"
+                stroke="var(--primary)"
+                fill="var(--primary)"
                 fillOpacity={0.18}
               />
               <Area
                 type="monotone"
                 dataKey="actual"
                 name="Real"
-                stroke="hsl(var(--success))"
-                fill="hsl(var(--success))"
+                stroke="var(--success)"
+                fill="var(--success)"
                 fillOpacity={0.14}
               />
             </AreaChart>
@@ -174,7 +174,7 @@ function Dashboard() {
                 type="monotone"
                 dataKey="accuracy"
                 name="Precisão (%)"
-                stroke="hsl(var(--primary))"
+                stroke="var(--primary)"
                 strokeWidth={2}
                 connectNulls
                 dot={false}
@@ -188,7 +188,7 @@ function Dashboard() {
               <XAxis dataKey="label" stroke={chartTheme.axis} fontSize={11} tickLine={false} />
               <YAxis allowDecimals={false} stroke={chartTheme.axis} fontSize={11} tickLine={false} axisLine={false} />
               <Tooltip contentStyle={tooltipStyle} />
-              <Bar dataKey="count" name="Prompts" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="count" name="Prompts" fill="var(--primary)" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ChartCard>
 
@@ -202,7 +202,7 @@ function Dashboard() {
                 type="monotone"
                 dataKey="complexity"
                 name="Complexidade"
-                stroke="hsl(var(--warning))"
+                stroke="var(--warning)"
                 strokeWidth={2}
                 dot={false}
               />
