@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getAnalysisDetail } from "@/lib/analysis.functions";
-import type { EstimationResult } from "@/lib/estimator";
+import { complexityLevelOf, type EstimationResult } from "@/lib/estimator";
 import { AnalysisReport } from "@/components/AnalysisReport";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
