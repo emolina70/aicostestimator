@@ -199,7 +199,14 @@ export type EstimationResult = {
   actionCount: number;
   factors: EstimationFactor[];
   recommendations: string[];
-  steps: { title: string; description: string; estimated: number }[];
+  steps: {
+    title: string;
+    description: string;
+    estimated: number;
+    min?: number;
+    max?: number;
+    prompt?: string;
+  }[];
   optimizedPrompt: string;
   estimatedOptimized: number;
   reductionPercentage: number;
