@@ -294,4 +294,3 @@ function Stat({
   );
 }
 
-export { TrendingUp };
