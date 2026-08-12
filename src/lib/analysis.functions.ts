@@ -1,12 +1,18 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { analyzePromptText, type EstimationResult, type PlatformId } from "@/lib/estimator";
+import {
+  analyzePromptText,
+  type EstimationResult,
+  type PlatformId,
+  type TaskTypeId,
+} from "@/lib/estimator";
 
 const analyzeInput = z.object({
   title: z.string().min(1).max(140),
   content: z.string().min(10).max(20000),
   platform: z.string().default("lovable"),
+  taskType: z.string().default("other"),
   projectId: z.string().uuid().nullable().optional(),
 });
 
@@ -72,7 +78,8 @@ export const analyzePrompt = createServerFn({ method: "POST" })
       if (key) overrides[key] = Number(p.parameter_value);
     }
 
-    const result = analyzePromptText(data.content, platform, overrides);
+    const taskType = data.taskType as TaskTypeId;
+    const result = analyzePromptText(data.content, platform, overrides, taskType);
 
     const { data: prompt, error: promptError } = await supabase
       .from("prompts")
@@ -82,6 +89,7 @@ export const analyzePrompt = createServerFn({ method: "POST" })
         title: data.title,
         content: data.content,
         platform,
+        task_type: taskType,
       })
       .select("id")
       .single();
@@ -93,6 +101,7 @@ export const analyzePrompt = createServerFn({ method: "POST" })
         prompt_id: prompt.id,
         user_id: userId,
         platform,
+        task_type: taskType,
         complexity_score: result.complexityScore,
         confidence_score: result.confidenceScore,
         estimated_min: result.estimatedMin,
