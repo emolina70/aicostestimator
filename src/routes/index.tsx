@@ -1,24 +1,130 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Gauge, ShieldCheck, Split, Sparkles, TrendingDown, Layers } from "lucide-react";
 
-// No head() here: the home route inherits title/description/og/twitter from
-// __root.tsx, and ships no og:image so serve-time hosting can inject the
-// project's social preview (explicit og:image or latest screenshot).
 export const Route = createFileRoute("/")({
-  component: Index,
+  head: () => ({
+    meta: [
+      { title: "AI Dev Cost Optimizer — estimativa de créditos para prompts" },
+      {
+        name: "description",
+        content:
+          "Estime a faixa provável de créditos de um prompt antes de rodá-lo no Lovable e em outras ferramentas de desenvolvimento com IA.",
+      },
+      { property: "og:title", content: "AI Dev Cost Optimizer" },
+      {
+        property: "og:description",
+        content:
+          "Faixa mínima, provável e máxima de créditos, fatores de complexidade e prompt otimizado.",
+      },
+    ],
+  }),
+  component: Landing,
 });
 
-// IMPORTANT: Replace this placeholder. See ./README.md for routing conventions.
-function Index() {
+const FEATURES = [
+  {
+    icon: Gauge,
+    title: "Faixa probabilística",
+    text: "Mínimo, mais provável e máximo — com nível de confiança explícito. Nunca um número mágico.",
+  },
+  {
+    icon: Layers,
+    title: "Fatores de complexidade",
+    text: "Frontend, backend, dados, autenticação, integrações e regras de negócio pontuados separadamente.",
+  },
+  {
+    icon: Split,
+    title: "Divisão em etapas",
+    text: "Sugestão de como quebrar o prompt em execuções menores e previsíveis.",
+  },
+  {
+    icon: TrendingDown,
+    title: "Prompt otimizado",
+    text: "Versão reescrita com escopo explícito e restrições, com redução estimada.",
+  },
+  {
+    icon: ShieldCheck,
+    title: "Dados privados",
+    text: "Cada conta só acessa seus próprios prompts, análises e histórico.",
+  },
+  {
+    icon: Sparkles,
+    title: "Multiplataforma",
+    text: "Lovable hoje; Cursor, Claude Code, Copilot e Codex já previstos na arquitetura.",
+  },
+];
+
+function Landing() {
   return (
-    <div
-      className="flex min-h-screen items-center justify-center"
-      style={{ backgroundColor: "#fcfbf8" }}
-    >
-      <img
-        data-lovable-blank-page-placeholder="REMOVE_THIS"
-        src="https://cdn.gpteng.co/blank-app-v1.svg"
-        alt="Your app will live here!"
-      />
+    <div className="min-h-screen bg-background">
+      <header className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
+        <div className="flex items-center gap-2">
+          <span className="flex size-8 items-center justify-center rounded-lg bg-primary/15 text-primary">
+            <Gauge className="size-4" />
+          </span>
+          <span className="font-display text-sm font-semibold sm:text-base">
+            AI Dev Cost Optimizer
+          </span>
+        </div>
+        <Button asChild size="sm">
+          <Link to="/auth">Entrar</Link>
+        </Button>
+      </header>
+
+      <section className="hero-bg">
+        <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6 sm:py-28">
+          <p className="mb-4 inline-flex rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs text-primary">
+            Estimativa antes da execução
+          </p>
+          <h1 className="max-w-3xl font-display text-4xl font-semibold leading-tight sm:text-6xl">
+            Saiba a <span className="text-gradient">faixa provável de créditos</span> antes de rodar
+            o prompt
+          </h1>
+          <p className="mt-6 max-w-2xl text-base text-muted-foreground sm:text-lg">
+            O AI Dev Cost Optimizer analisa o seu prompt, pontua a complexidade em seis dimensões e
+            devolve um intervalo estimado com nível de confiança — além de recomendações e uma
+            versão otimizada. Não prevemos o consumo exato: mostramos a faixa mais provável.
+          </p>
+          <div className="mt-8 flex flex-wrap gap-3">
+            <Button asChild size="lg">
+              <Link to="/auth">
+                <Sparkles className="size-4" /> Começar grátis
+              </Link>
+            </Button>
+            <Button asChild size="lg" variant="outline">
+              <Link to="/auth">Já tenho conta</Link>
+            </Button>
+          </div>
+          <p className="mt-4 text-xs text-muted-foreground">
+            Plano Free com 5 análises por mês. Sem cartão de crédito.
+          </p>
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-6xl px-4 pb-24 sm:px-6">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {FEATURES.map(({ icon: Icon, title, text }) => (
+            <Card key={title} className="surface">
+              <CardContent className="pt-6">
+                <span className="flex size-9 items-center justify-center rounded-lg bg-primary/12 text-primary">
+                  <Icon className="size-4" />
+                </span>
+                <h2 className="mt-4 font-display text-lg font-semibold">{title}</h2>
+                <p className="mt-2 text-sm text-muted-foreground">{text}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </section>
+
+      <footer className="border-t border-border py-8">
+        <p className="mx-auto max-w-6xl px-4 text-xs text-muted-foreground sm:px-6">
+          As estimativas são probabilísticas e informativas. O consumo real varia conforme o estado
+          do projeto, o modelo utilizado e iterações imprevistas.
+        </p>
+      </footer>
     </div>
   );
 }
