@@ -290,17 +290,17 @@ export function analyzePromptText(
 
   const estimatedEntities = Math.max(
     1,
-    Math.round(entityHits * 1.5 + scores.database / 22 + requirementCount / 4),
+    Math.round((entityHits * 1.5 + scores.database / 22 + requirementCount / 4) * W.crud),
   );
-  const estimatedOperations = Math.max(1, Math.round(actionCount + scores.database / 30));
+  const estimatedOperations = Math.max(1, Math.round((actionCount + scores.database / 30) * W.crud));
 
   const weighted =
-    scores.frontend * 0.18 +
-    scores.backend * 0.2 +
-    scores.database * 0.2 +
-    scores.authentication * 0.14 +
-    scores.integration * 0.16 +
-    scores.logic * 0.12;
+    scores.frontend * W.frontend +
+    scores.backend * W.backend +
+    scores.database * W.database +
+    scores.authentication * W.authentication +
+    scores.integration * W.integration +
+    scores.logic * W.logic;
 
   const signalBreadth = Math.min(22, detectedSignals.length * 1.6);
   const requirementFactor = Math.min(18, requirementCount * 1.4);
@@ -310,11 +310,12 @@ export function analyzePromptText(
     Math.min(
       100,
       Math.round(
-        (weighted * 0.62 + signalBreadth + requirementFactor + sizeFactor + estimatedEntities * 1.1) *
+        (weighted * W.complexity + signalBreadth + requirementFactor + sizeFactor + estimatedEntities * 1.1) *
           task.effort,
       ),
     ),
   );
+
 
   const complexityLevel = complexityLevelOf(complexityScore);
 
