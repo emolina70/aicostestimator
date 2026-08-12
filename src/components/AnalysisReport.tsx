@@ -130,9 +130,11 @@ export function CreditRange({ result }: { result: EstimationResult }) {
 export function AnalysisReport({
   result,
   optimizedPrompt,
+  originalPrompt,
 }: {
   result: EstimationResult;
   optimizedPrompt?: string;
+  originalPrompt?: string;
 }) {
   const optimized = optimizedPrompt ?? result.optimizedPrompt;
 
@@ -209,11 +211,37 @@ export function AnalysisReport({
           <CardTitle className="text-base">Divisão sugerida em etapas</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          {result.steps.map((s) => (
+          <p className="text-xs text-muted-foreground">
+            Executar por etapas costuma reduzir retrabalho: cada etapa entrega algo funcional e pode
+            ser validada antes da próxima. Copie o prompt de cada etapa e execute na ordem.
+          </p>
+          {result.steps.map((s, i) => (
             <div key={s.title} className="rounded-lg border border-border p-3">
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-sm font-medium">{s.title}</p>
-                <span className="font-mono text-xs text-primary">~{s.estimated} cr.</span>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="text-sm font-medium">
+                  <span className="mr-2 inline-flex size-5 items-center justify-center rounded-full bg-primary/15 text-[10px] font-semibold text-primary">
+                    {i + 1}
+                  </span>
+                  {s.title}
+                </p>
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-xs text-muted-foreground">
+                    {s.min ?? s.estimated} – <span className="text-primary">{s.estimated}</span> –{" "}
+                    {s.max ?? s.estimated} cr.
+                  </span>
+                  {s.prompt && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        void navigator.clipboard.writeText(s.prompt!);
+                        toast.success(`Prompt da etapa ${i + 1} copiado`);
+                      }}
+                    >
+                      <Copy className="size-3.5" /> Copiar prompt
+                    </Button>
+                  )}
+                </div>
               </div>
               <p className="mt-1 text-xs text-muted-foreground">{s.description}</p>
             </div>
@@ -246,6 +274,38 @@ export function AnalysisReport({
           </pre>
         </CardContent>
       </Card>
+
+      {originalPrompt && (
+        <Card className="surface lg:col-span-2">
+          <CardHeader>
+            <CardTitle className="text-base">Comparação: original × otimizado</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-4 md:grid-cols-2">
+            <div>
+              <p className="mb-2 flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
+                Original
+                <Badge variant="outline" className="font-mono">
+                  ~{result.estimatedExpected} cr.
+                </Badge>
+              </p>
+              <pre className="max-h-80 overflow-auto whitespace-pre-wrap rounded-lg bg-secondary/40 p-4 font-mono text-xs text-muted-foreground">
+                {originalPrompt}
+              </pre>
+            </div>
+            <div>
+              <p className="mb-2 flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
+                Otimizado
+                <Badge variant="outline" className="border-success/50 font-mono text-success">
+                  ~{result.estimatedOptimized} cr. (−{result.reductionPercentage}%)
+                </Badge>
+              </p>
+              <pre className="max-h-80 overflow-auto whitespace-pre-wrap rounded-lg bg-secondary/60 p-4 font-mono text-xs text-foreground">
+                {optimized}
+              </pre>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
