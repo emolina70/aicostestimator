@@ -138,20 +138,19 @@ export function AnalysisReport({
 
   return (
     <div className="grid gap-6 lg:grid-cols-2">
-      <div className="space-y-6 lg:col-span-2">
-        <CreditRange result={result} />
-      </div>
+      <CreditRange result={result} />
+      <ComplexityGauge result={result} />
 
       <Card className="surface">
         <CardHeader>
-          <CardTitle className="text-base">Dimensões de complexidade</CardTitle>
+          <CardTitle className="text-base">Fatores da estimativa</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {Object.entries(result.scores).map(([dim, value]) => (
             <div key={dim}>
               <div className="mb-1 flex justify-between text-sm">
                 <span className="text-muted-foreground">{DIMENSION_LABELS[dim] ?? dim}</span>
-                <span className="font-mono text-xs text-foreground">{value}</span>
+                <span className="font-mono text-xs text-foreground">{value}%</span>
               </div>
               <div className="h-1.5 w-full overflow-hidden rounded-full bg-secondary">
                 <div className="h-full rounded-full bg-primary" style={{ width: `${value}%` }} />
