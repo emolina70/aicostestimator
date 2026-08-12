@@ -282,23 +282,23 @@ export function AnalysisReport({
           </CardHeader>
           <CardContent className="grid gap-4 md:grid-cols-2">
             <div>
-              <p className="mb-2 flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
+              <div className="mb-2 flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
                 Original
                 <Badge variant="outline" className="font-mono">
                   ~{result.estimatedExpected} cr.
                 </Badge>
-              </p>
+              </div>
               <pre className="max-h-80 overflow-auto whitespace-pre-wrap rounded-lg bg-secondary/40 p-4 font-mono text-xs text-muted-foreground">
                 {originalPrompt}
               </pre>
             </div>
             <div>
-              <p className="mb-2 flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
+              <div className="mb-2 flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
                 Otimizado
                 <Badge variant="outline" className="border-success/50 font-mono text-success">
                   ~{result.estimatedOptimized} cr. (−{result.reductionPercentage}%)
                 </Badge>
-              </p>
+              </div>
               <pre className="max-h-80 overflow-auto whitespace-pre-wrap rounded-lg bg-secondary/60 p-4 font-mono text-xs text-foreground">
                 {optimized}
               </pre>
