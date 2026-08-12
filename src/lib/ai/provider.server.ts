@@ -11,6 +11,7 @@
 import {
   analyzePromptText,
   type EstimationResult,
+  type EstimatorWeights,
   type PlatformId,
   type PlatformProfile,
   type TaskTypeId,
@@ -21,6 +22,7 @@ export type AnalyzeArgs = {
   platform: PlatformId;
   taskType: TaskTypeId;
   overrides?: Partial<PlatformProfile>;
+  weights?: EstimatorWeights;
 };
 
 export type AIUsage = {
@@ -63,8 +65,8 @@ export class HeuristicProvider implements AIProvider {
   readonly name = "heuristic";
   readonly model = "rules-v1";
 
-  private run({ content, platform, taskType, overrides }: AnalyzeArgs) {
-    return analyzePromptText(content, platform, overrides, taskType);
+  private run({ content, platform, taskType, overrides, weights }: AnalyzeArgs) {
+    return analyzePromptText(content, platform, overrides, taskType, weights);
   }
 
   async analyzePrompt(args: AnalyzeArgs) {
