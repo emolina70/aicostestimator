@@ -539,19 +539,15 @@ export const getMyRole = createServerFn({ method: "GET" })
     return { isAdmin: Boolean(data) };
   });
 
-async function assertAdmin(context: { supabase: { rpc: Function }; userId: string }) {
-  const { data } = await (context.supabase as any).rpc("has_role", {
-    _user_id: context.userId,
-    _role: "admin",
-  });
-  if (!data) throw new Error("Acesso restrito a administradores.");
-}
-
 /** Painel administrativo: métricas agregadas de toda a plataforma. */
 export const getAdminOverview = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    await assertAdmin(context);
+    const { data: isAdmin } = await context.supabase.rpc("has_role", {
+      _user_id: context.userId,
+      _role: "admin",
+    });
+    if (!isAdmin) throw new Error("Acesso restrito a administradores.");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const [{ data: profiles }, { data: analyses }, { data: actuals }, { data: plans }, { data: aiLogs }] =
@@ -626,7 +622,11 @@ export const getAdminOverview = createServerFn({ method: "GET" })
 export const listEstimatorParameters = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    await assertAdmin(context);
+    const { data: isAdmin } = await context.supabase.rpc("has_role", {
+      _user_id: context.userId,
+      _role: "admin",
+    });
+    if (!isAdmin) throw new Error("Acesso restrito a administradores.");
     const { data } = await context.supabase
       .from("estimator_parameters")
       .select("id, platform, parameter_name, parameter_value, description, active")
@@ -641,7 +641,11 @@ export const updateEstimatorParameter = createServerFn({ method: "POST" })
     z.object({ id: z.string().uuid(), value: z.number().min(0).max(1000) }).parse(d),
   )
   .handler(async ({ data, context }) => {
-    await assertAdmin(context);
+    const { data: isAdmin } = await context.supabase.rpc("has_role", {
+      _user_id: context.userId,
+      _role: "admin",
+    });
+    if (!isAdmin) throw new Error("Acesso restrito a administradores.");
     const { error } = await context.supabase
       .from("estimator_parameters")
       .update({ parameter_value: data.value })
