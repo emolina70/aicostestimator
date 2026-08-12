@@ -202,6 +202,7 @@ export type Database = {
           prompt_id: string
           recommendation: string | null
           steps: Json
+          task_type: string
           user_id: string
         }
         Insert: {
@@ -225,6 +226,7 @@ export type Database = {
           prompt_id: string
           recommendation?: string | null
           steps?: Json
+          task_type?: string
           user_id: string
         }
         Update: {
@@ -248,6 +250,7 @@ export type Database = {
           prompt_id?: string
           recommendation?: string | null
           steps?: Json
+          task_type?: string
           user_id?: string
         }
         Relationships: [
@@ -311,6 +314,7 @@ export type Database = {
           id: string
           platform: string
           project_id: string | null
+          task_type: string
           title: string
           updated_at: string
           user_id: string
@@ -321,6 +325,7 @@ export type Database = {
           id?: string
           platform?: string
           project_id?: string | null
+          task_type?: string
           title: string
           updated_at?: string
           user_id: string
@@ -331,6 +336,7 @@ export type Database = {
           id?: string
           platform?: string
           project_id?: string | null
+          task_type?: string
           title?: string
           updated_at?: string
           user_id?: string
