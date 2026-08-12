@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { analyzePrompt, listProjects } from "@/lib/analysis.functions";
+import { analyzePrompt, listProjects, getDashboardData } from "@/lib/analysis.functions";
 import type { AnalyzeResponse } from "@/lib/analysis.functions";
 import { PLATFORMS } from "@/lib/estimator";
 import { AnalysisReport } from "@/components/AnalysisReport";
@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { AlertTriangle } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -49,7 +50,18 @@ function Analyze() {
   const queryClient = useQueryClient();
   const runAnalysis = useServerFn(analyzePrompt);
   const fetchProjects = useServerFn(listProjects);
+  const fetchDashboard = useServerFn(getDashboardData);
   const { data: projects } = useQuery({ queryKey: ["projects"], queryFn: () => fetchProjects({}) });
+  const { data: dashboard } = useQuery({
+    queryKey: ["dashboard"],
+    queryFn: () => fetchDashboard({}),
+  });
+
+  const used = dashboard?.used ?? 0;
+  const limit = dashboard?.plan.limit ?? 5;
+  const planName = dashboard?.plan.name ?? "Free";
+  const limitReached = used >= limit;
+  const remaining = Math.max(0, limit - used);
 
   const mutation = useMutation({
     mutationFn: () =>
@@ -143,17 +155,42 @@ function Analyze() {
             </p>
           </div>
 
-          <Button
-            onClick={() => mutation.mutate()}
-            disabled={mutation.isPending || content.trim().length < 10}
-          >
-            {mutation.isPending ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <Sparkles className="size-4" />
-            )}
-            Estimar consumo
-          </Button>
+          {limitReached ? (
+            <div className="flex flex-col gap-3 rounded-xl border border-destructive/40 bg-destructive/5 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="mt-0.5 size-5 shrink-0 text-destructive" />
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-destructive">
+                    Limite mensal do plano {planName} atingido ({used}/{limit} análises).
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Você usou todas as suas {limit} análises deste mês. Faça upgrade do plano para
+                    continuar estimando prompts.
+                  </p>
+                </div>
+              </div>
+              <Button asChild size="sm" className="shrink-0">
+                <Link to="/settings">Fazer upgrade</Link>
+              </Button>
+            </div>
+          ) : (
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <Button
+                onClick={() => mutation.mutate()}
+                disabled={mutation.isPending || content.trim().length < 10}
+              >
+                {mutation.isPending ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <Sparkles className="size-4" />
+                )}
+                Estimar consumo
+              </Button>
+              <p className="text-xs text-muted-foreground">
+                {remaining} de {limit} análises restantes neste mês.
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
 
