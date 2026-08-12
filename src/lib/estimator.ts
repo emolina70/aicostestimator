@@ -444,7 +444,7 @@ function buildOptimizedPrompt(
   }
 
   const titleLine = units[0] ?? "";
-  const isHeading = units.length > 1 && titleLine.length < 120 && !/[.;:]$/.test(titleLine) === false;
+  const isHeading = units.length > 1 && titleLine.length < 120 && !/[.;:]$/.test(titleLine);
   const objective = titleLine.replace(/\s+/g, " ").trim();
 
   const body = units.length > 1 && isHeading ? units.slice(1) : units;
