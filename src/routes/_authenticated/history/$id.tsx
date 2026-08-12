@@ -44,8 +44,9 @@ function AnalysisDetail() {
 
   const result: EstimationResult = {
     platform: (a["platform"] as EstimationResult["platform"]) ?? "lovable",
+    taskType: (a["task_type"] as EstimationResult["taskType"]) ?? "other",
     complexityScore: score,
-    complexityLevel: score < 25 ? "Baixa" : score < 50 ? "Moderada" : score < 75 ? "Alta" : "Muito alta",
+    complexityLevel: complexityLevelOf(score),
     confidenceScore: confidence,
     confidenceLevel: confidence >= 75 ? "Alta" : confidence >= 55 ? "Média" : "Baixa",
     estimatedMin: num("estimated_min"),
@@ -59,8 +60,12 @@ function AnalysisDetail() {
       integration: num("integration_score"),
       logic: num("logic_score"),
     },
+    detectedSignals: [],
     estimatedEntities: num("estimated_entities"),
     estimatedOperations: num("estimated_operations"),
+    requirementCount: 0,
+    actionCount: 0,
+
     factors: (a["factors"] as EstimationResult["factors"]) ?? [],
     recommendations: String(a["recommendation"] ?? "").split("\n").filter(Boolean),
     steps: (a["steps"] as EstimationResult["steps"]) ?? [],
