@@ -67,6 +67,7 @@ export const analyzePrompt = createServerFn({ method: "POST" })
       .eq("active", true);
 
     const overrides: Record<string, number> = {};
+    const weights: Record<string, number> = {};
     for (const p of params ?? []) {
       const map: Record<string, string> = {
         base_credits: "baseCredits",
@@ -74,12 +75,35 @@ export const analyzePrompt = createServerFn({ method: "POST" })
         min_factor: "minFactor",
         max_factor: "maxFactor",
       };
+      const weightMap: Record<string, string> = {
+        frontend_weight: "frontend",
+        backend_weight: "backend",
+        database_weight: "database",
+        authentication_weight: "authentication",
+        integration_weight: "integration",
+        logic_weight: "logic",
+        crud_weight: "crud",
+        complexity_weight: "complexity",
+      };
       const key = map[p.parameter_name];
       if (key) overrides[key] = Number(p.parameter_value);
+      const wkey = weightMap[p.parameter_name];
+      if (wkey) weights[wkey] = Number(p.parameter_value);
     }
 
     const taskType = data.taskType as TaskTypeId;
-    const result = analyzePromptText(data.content, platform, overrides, taskType);
+    // Toda análise passa pela camada de abstração de IA (hoje: motor heurístico).
+    const { getAIProvider, logAIUsage } = await import("@/lib/ai/provider.server");
+    const provider = getAIProvider();
+    const { value: result, usage } = await provider.analyzePrompt({
+      content: data.content,
+      platform,
+      taskType,
+      overrides,
+      weights,
+    });
+    void logAIUsage(userId, usage);
+
 
     const { data: prompt, error: promptError } = await supabase
       .from("prompts")
