@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { analyzePrompt, listProjects } from "@/lib/analysis.functions";
+import { analyzePrompt, listProjects, getDashboardData } from "@/lib/analysis.functions";
 import type { AnalyzeResponse } from "@/lib/analysis.functions";
 import { PLATFORMS } from "@/lib/estimator";
 import { AnalysisReport } from "@/components/AnalysisReport";
@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { AlertTriangle } from "lucide-react";
 import {
   Select,
   SelectContent,
