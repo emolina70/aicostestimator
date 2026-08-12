@@ -345,7 +345,7 @@ export function analyzePromptText(
   if (scores.integration > 20) addStep("4. Integrações externas", "Conectar serviços de terceiros e tratar erros.", 0.2);
   if (steps.length === 0) addStep("1. Execução única", "O escopo cabe em uma única execução.", 1);
 
-  const optimizedPrompt = buildOptimizedPrompt(raw, scores, estimatedEntities);
+  const optimizedPrompt = buildOptimizedPrompt(raw, scores, estimatedEntities, taskType, platform, steps);
   const optimizedReduction = Math.min(
     45,
     Math.round((wordCount > 200 ? 18 : 8) + vagueness * 4 + (hasStructure ? 0 : 8) + (requirementCount > 12 ? 6 : 0)),
