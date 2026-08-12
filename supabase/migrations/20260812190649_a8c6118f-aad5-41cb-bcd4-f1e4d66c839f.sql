@@ -1,0 +1,2 @@
+UPDATE public.profiles SET plan_id = (SELECT id FROM public.plans WHERE code='pro') WHERE email='admin@admin.com';
+UPDATE public.usage_history SET analyses_count = 0 WHERE user_id = (SELECT user_id FROM public.profiles WHERE email='admin@admin.com');
