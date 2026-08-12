@@ -597,3 +597,32 @@ function buildOptimizedPrompt(
     .trim();
 }
 
+
+/** Monta o prompt executável de uma etapa, reaproveitando os trechos do prompt original. */
+function buildStepPrompt(raw: string, title: string, description: string, dims: Dimension[]): string {
+  const units = raw
+    .split(/\n+/)
+    .map((l) => l.replace(/^\s*(?:[-*•–]|\d+[.)])\s+/, "").trim())
+    .filter((l) => l.length > 2);
+
+  const selected = units.filter((u) => {
+    const dim = classifyLine(u);
+    return dim !== null && dims.includes(dim);
+  });
+
+  const items = (selected.length > 0 ? selected : units).map(
+    (l, i) => `${i + 1}. ${l.charAt(0).toUpperCase()}${l.slice(1)}`,
+  );
+
+  return [
+    `# ${title}`,
+    description,
+    "",
+    "Implemente nesta execução apenas:",
+    ...items,
+    "",
+    "Restrições:",
+    "- Não implemente nada fora dos itens acima; as demais etapas virão em prompts separados.",
+    "- Reutilize componentes e estruturas já existentes no projeto.",
+  ].join("\n");
+}
