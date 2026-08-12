@@ -226,12 +226,34 @@ function countMatches(text: string, words: string[]): number {
   return hits;
 }
 
+/** Pesos ajustáveis vindos da tabela `estimator_parameters` (nunca fixos no código). */
+export type EstimatorWeights = Partial<Record<Dimension, number>> & {
+  crud?: number;
+  complexity?: number;
+};
+
+export const DEFAULT_WEIGHTS: Required<Omit<EstimatorWeights, "crud" | "complexity">> & {
+  crud: number;
+  complexity: number;
+} = {
+  frontend: 0.18,
+  backend: 0.2,
+  database: 0.2,
+  authentication: 0.14,
+  integration: 0.16,
+  logic: 0.12,
+  crud: 1,
+  complexity: 0.62,
+};
+
 export function analyzePromptText(
   raw: string,
   platform: PlatformId = "lovable",
   overrides?: Partial<PlatformProfile>,
   taskType: TaskTypeId = "other",
+  weightOverrides?: EstimatorWeights,
 ): EstimationResult {
+  const W = { ...DEFAULT_WEIGHTS, ...weightOverrides };
   const text = norm(raw);
   const words = raw.trim().split(/\s+/).filter(Boolean);
   const wordCount = words.length;
