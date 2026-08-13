@@ -488,7 +488,27 @@ export function analyzePromptText(
   };
 }
 
+/**
+ * Detecta se o texto já é um prompt otimizado gerado pelo sistema.
+ * Nesse caso, a estrutura extra (seções, numeração, critérios de aceite) não
+ * representa escopo adicional e não deve inflar a estimativa.
+ */
+export function isOptimizedPrompt(raw: string): boolean {
+  const t = norm(raw);
+  const markers = [
+    "# objetivo",
+    "# requisitos",
+    "# escopo tecnico",
+    "# ordem de execucao",
+    "# restricoes",
+    "# criterios de aceite",
+    "implemente somente os requisitos numerados",
+  ];
+  return markers.filter((m) => t.includes(m)).length >= 3;
+}
+
 const DIMENSION_SECTIONS: { dim: Dimension; title: string }[] = [
+
   { dim: "frontend", title: "Interface (frontend)" },
   { dim: "backend", title: "Servidor (backend)" },
   { dim: "database", title: "Dados e persistência" },
