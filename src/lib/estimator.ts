@@ -438,12 +438,17 @@ export function analyzePromptText(
   if (recommendations.length === 0)
     recommendations.push("O prompt já está enxuto; mantenha um objetivo por execução.");
 
-  const optimizedPrompt = buildOptimizedPrompt(raw, scores, estimatedEntities, taskType, platform, steps);
-  const optimizedReduction = Math.min(
-    45,
-    Math.round((wordCount > 200 ? 18 : 8) + vagueness * 4 + (hasStructure ? 0 : 8) + (requirementCount > 12 ? 6 : 0)),
-  );
+  const optimizedPrompt = isOptimized
+    ? raw.trim()
+    : buildOptimizedPrompt(raw, scores, estimatedEntities, taskType, platform, steps);
+  const optimizedReduction = isOptimized
+    ? 0
+    : Math.min(
+        45,
+        Math.round((wordCount > 200 ? 18 : 8) + vagueness * 4 + (hasStructure ? 0 : 8) + (requirementCount > 12 ? 6 : 0)),
+      );
   const estimatedOptimized = round(expected * (1 - optimizedReduction / 100));
+
 
   return {
     platform,
