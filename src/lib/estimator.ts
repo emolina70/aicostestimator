@@ -318,7 +318,7 @@ export function analyzePromptText(
     ? Math.min(10, requirementCount * 0.6)
     : Math.min(18, requirementCount * 1.4);
   const sizeFactor = isOptimized ? 0 : Math.min(12, (wordCount / 400) * 12); // tamanho tem peso pequeno
-  const clarityFactor = isOptimized ? 0.82 : 1; // clareza reduz retrabalho
+  const clarityFactor = isOptimized ? 0.9 : 1; // clareza reduz retrabalho
   const complexityScore = Math.max(
     1,
     Math.min(
