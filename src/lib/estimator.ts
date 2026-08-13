@@ -336,7 +336,9 @@ export function analyzePromptText(
   const vagueTerms = ["etc","entre outros","algo como","tipo","similar","completo","tudo","robusto","moderno"];
   const vagueness = countMatches(text, vagueTerms);
   const hasStructure = bulletCount >= 3;
-  let confidence = 68 + (hasStructure ? 10 : 0) + (wordCount > 60 ? 8 : -10) - vagueness * 5;
+  let confidence =
+    68 + (hasStructure ? 10 : 0) + (wordCount > 60 ? 8 : -10) - vagueness * 5 + (isOptimized ? 8 : 0);
+
   if (wordCount < 15) confidence -= 12;
   if (complexityScore > 80) confidence -= 8;
   if (detectedSignals.length >= 6) confidence += 4;
