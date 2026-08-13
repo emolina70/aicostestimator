@@ -254,10 +254,13 @@ export function analyzePromptText(
   weightOverrides?: EstimatorWeights,
 ): EstimationResult {
   const W = { ...DEFAULT_WEIGHTS, ...weightOverrides };
-  const text = norm(raw);
-  const words = raw.trim().split(/\s+/).filter(Boolean);
-  const wordCount = words.length;
   const isOptimized = isOptimizedPrompt(raw);
+  // Em um prompt já otimizado, apenas Objetivo/Contexto/Requisitos representam
+  // escopo real: escopo técnico, ordem, restrições e critérios são boilerplate.
+  const scopeText = isOptimized ? stripOptimizedBoilerplate(raw) : raw;
+  const text = norm(scopeText);
+  const words = scopeText.trim().split(/\s+/).filter(Boolean);
+  const wordCount = words.length;
   const profile = { ...(PLATFORM_PROFILES[platform] ?? PLATFORM_PROFILES.lovable), ...overrides };
   const task = TASK_PROFILES[taskType] ?? TASK_PROFILES.other;
 
@@ -274,12 +277,13 @@ export function analyzePromptText(
     rawScores[s.dimension] += s.weight;
   }
 
-  const bulletCount = (raw.match(/^\s*(?:[-*•]|\d+[.)])\s+/gm) ?? []).length;
-  const sentenceCount = raw.split(/[.;\n]+/).map((s) => s.trim()).filter((s) => s.length > 3).length;
+  const bulletCount = (scopeText.match(/^\s*(?:[-*•]|\d+[.)])\s+/gm) ?? []).length;
+  const sentenceCount = scopeText.split(/[.;\n]+/).map((s) => s.trim()).filter((s) => s.length > 3).length;
   const requirementCount = Math.max(1, bulletCount || sentenceCount);
   const entityHits = countMatches(text, ENTITY_HINTS);
   const opHits = countMatches(text, OPERATION_HINTS);
   const actionCount = Math.max(1, Math.round(opHits * 1.3 + bulletCount * 0.6));
+
 
   // 2. Densidade de requisitos amplifica os sinais detectados.
   const breadth = isOptimized
