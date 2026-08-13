@@ -254,11 +254,16 @@ export function analyzePromptText(
   weightOverrides?: EstimatorWeights,
 ): EstimationResult {
   const W = { ...DEFAULT_WEIGHTS, ...weightOverrides };
-  const text = norm(raw);
-  const words = raw.trim().split(/\s+/).filter(Boolean);
+  const isOptimized = isOptimizedPrompt(raw);
+  // Em um prompt já otimizado, apenas Objetivo/Contexto/Requisitos representam
+  // escopo real: escopo técnico, ordem, restrições e critérios são boilerplate.
+  const scopeText = isOptimized ? stripOptimizedBoilerplate(raw) : raw;
+  const text = norm(scopeText);
+  const words = scopeText.trim().split(/\s+/).filter(Boolean);
   const wordCount = words.length;
   const profile = { ...(PLATFORM_PROFILES[platform] ?? PLATFORM_PROFILES.lovable), ...overrides };
   const task = TASK_PROFILES[taskType] ?? TASK_PROFILES.other;
+
 
   // 1. Detecção de sinais ponderados (não depende de contagem de caracteres).
   const detectedSignals: EstimationResult["detectedSignals"] = [];
@@ -272,15 +277,19 @@ export function analyzePromptText(
     rawScores[s.dimension] += s.weight;
   }
 
-  const bulletCount = (raw.match(/^\s*(?:[-*•]|\d+[.)])\s+/gm) ?? []).length;
-  const sentenceCount = raw.split(/[.;\n]+/).map((s) => s.trim()).filter((s) => s.length > 3).length;
+  const bulletCount = (scopeText.match(/^\s*(?:[-*•]|\d+[.)])\s+/gm) ?? []).length;
+  const sentenceCount = scopeText.split(/[.;\n]+/).map((s: string) => s.trim()).filter((s: string) => s.length > 3).length;
   const requirementCount = Math.max(1, bulletCount || sentenceCount);
   const entityHits = countMatches(text, ENTITY_HINTS);
   const opHits = countMatches(text, OPERATION_HINTS);
   const actionCount = Math.max(1, Math.round(opHits * 1.3 + bulletCount * 0.6));
 
+
   // 2. Densidade de requisitos amplifica os sinais detectados.
-  const breadth = Math.min(1.4, 1 + requirementCount / 25);
+  const breadth = isOptimized
+    ? Math.min(1.15, 1 + requirementCount / 60)
+    : Math.min(1.4, 1 + requirementCount / 25);
+
 
   const scores = {} as Record<Dimension, number>;
   for (const dim of Object.keys(rawScores) as Dimension[]) {
@@ -303,18 +312,25 @@ export function analyzePromptText(
     scores.logic * W.logic;
 
   const signalBreadth = Math.min(22, detectedSignals.length * 1.6);
-  const requirementFactor = Math.min(18, requirementCount * 1.4);
-  const sizeFactor = Math.min(12, (wordCount / 400) * 12); // tamanho tem peso pequeno
+  // Um prompt já otimizado é longo e muito numerado por estrutura, não por escopo:
+  // não pode ser penalizado por volume de linhas/palavras.
+  const requirementFactor = isOptimized
+    ? Math.min(10, requirementCount * 0.6)
+    : Math.min(18, requirementCount * 1.4);
+  const sizeFactor = isOptimized ? 0 : Math.min(12, (wordCount / 400) * 12); // tamanho tem peso pequeno
+  const clarityFactor = isOptimized ? 0.9 : 1; // clareza reduz retrabalho
   const complexityScore = Math.max(
     1,
     Math.min(
       100,
       Math.round(
         (weighted * W.complexity + signalBreadth + requirementFactor + sizeFactor + estimatedEntities * 1.1) *
-          task.effort,
+          task.effort *
+          clarityFactor,
       ),
     ),
   );
+
 
 
   const complexityLevel = complexityLevelOf(complexityScore);
@@ -324,7 +340,9 @@ export function analyzePromptText(
   const vagueTerms = ["etc","entre outros","algo como","tipo","similar","completo","tudo","robusto","moderno"];
   const vagueness = countMatches(text, vagueTerms);
   const hasStructure = bulletCount >= 3;
-  let confidence = 68 + (hasStructure ? 10 : 0) + (wordCount > 60 ? 8 : -10) - vagueness * 5;
+  let confidence =
+    68 + (hasStructure ? 10 : 0) + (wordCount > 60 ? 8 : -10) - vagueness * 5 + (isOptimized ? 8 : 0);
+
   if (wordCount < 15) confidence -= 12;
   if (complexityScore > 80) confidence -= 8;
   if (detectedSignals.length >= 6) confidence += 4;
@@ -368,7 +386,7 @@ export function analyzePromptText(
       estimated: est,
       min: round(Math.max(0.3, est * profile.minFactor)),
       max: round(est * Math.min(1.9, profile.maxFactor) * spread),
-      prompt: buildStepPrompt(raw, title, description, dims),
+      prompt: buildStepPrompt(scopeText, title, description, dims),
     });
   };
   if (scores.database > 20 || scores.authentication > 20)
@@ -438,12 +456,17 @@ export function analyzePromptText(
   if (recommendations.length === 0)
     recommendations.push("O prompt já está enxuto; mantenha um objetivo por execução.");
 
-  const optimizedPrompt = buildOptimizedPrompt(raw, scores, estimatedEntities, taskType, platform, steps);
-  const optimizedReduction = Math.min(
-    45,
-    Math.round((wordCount > 200 ? 18 : 8) + vagueness * 4 + (hasStructure ? 0 : 8) + (requirementCount > 12 ? 6 : 0)),
-  );
+  const optimizedPrompt = isOptimized
+    ? raw.trim()
+    : buildOptimizedPrompt(raw, scores, estimatedEntities, taskType, platform, steps);
+  const optimizedReduction = isOptimized
+    ? 0
+    : Math.min(
+        45,
+        Math.round((wordCount > 200 ? 18 : 8) + vagueness * 4 + (hasStructure ? 0 : 8) + (requirementCount > 12 ? 6 : 0)),
+      );
   const estimatedOptimized = round(expected * (1 - optimizedReduction / 100));
+
 
   return {
     platform,
@@ -471,7 +494,47 @@ export function analyzePromptText(
   };
 }
 
+/**
+ * Detecta se o texto já é um prompt otimizado gerado pelo sistema.
+ * Nesse caso, a estrutura extra (seções, numeração, critérios de aceite) não
+ * representa escopo adicional e não deve inflar a estimativa.
+ */
+/** Remove as seções de boilerplate de um prompt otimizado, mantendo objetivo e requisitos. */
+export function stripOptimizedBoilerplate(raw: string): string {
+  const lines = raw.split(/\n/);
+  const out: string[] = [];
+  let skipping = false;
+  for (const line of lines) {
+    if (/^\s*#\s+/.test(line)) {
+      const h = norm(line);
+      skipping =
+        h.includes("escopo tecnico") ||
+        h.includes("ordem de execucao") ||
+        h.includes("restricoes") ||
+        h.includes("criterios de aceite");
+      if (!skipping) continue; // descarta o próprio cabeçalho de seção mantida
+    }
+    if (!skipping) out.push(line);
+  }
+  return out.join("\n").trim() || raw;
+}
+
+export function isOptimizedPrompt(raw: string): boolean {
+  const t = norm(raw);
+  const markers = [
+    "# objetivo",
+    "# requisitos",
+    "# escopo tecnico",
+    "# ordem de execucao",
+    "# restricoes",
+    "# criterios de aceite",
+    "implemente somente os requisitos numerados",
+  ];
+  return markers.filter((m) => t.includes(m)).length >= 3;
+}
+
 const DIMENSION_SECTIONS: { dim: Dimension; title: string }[] = [
+
   { dim: "frontend", title: "Interface (frontend)" },
   { dim: "backend", title: "Servidor (backend)" },
   { dim: "database", title: "Dados e persistência" },
