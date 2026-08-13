@@ -303,18 +303,25 @@ export function analyzePromptText(
     scores.logic * W.logic;
 
   const signalBreadth = Math.min(22, detectedSignals.length * 1.6);
-  const requirementFactor = Math.min(18, requirementCount * 1.4);
-  const sizeFactor = Math.min(12, (wordCount / 400) * 12); // tamanho tem peso pequeno
+  // Um prompt já otimizado é longo e muito numerado por estrutura, não por escopo:
+  // não pode ser penalizado por volume de linhas/palavras.
+  const requirementFactor = isOptimized
+    ? Math.min(10, requirementCount * 0.6)
+    : Math.min(18, requirementCount * 1.4);
+  const sizeFactor = isOptimized ? 0 : Math.min(12, (wordCount / 400) * 12); // tamanho tem peso pequeno
+  const clarityFactor = isOptimized ? 0.82 : 1; // clareza reduz retrabalho
   const complexityScore = Math.max(
     1,
     Math.min(
       100,
       Math.round(
         (weighted * W.complexity + signalBreadth + requirementFactor + sizeFactor + estimatedEntities * 1.1) *
-          task.effort,
+          task.effort *
+          clarityFactor,
       ),
     ),
   );
+
 
 
   const complexityLevel = complexityLevelOf(complexityScore);
