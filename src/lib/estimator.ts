@@ -280,7 +280,10 @@ export function analyzePromptText(
   const actionCount = Math.max(1, Math.round(opHits * 1.3 + bulletCount * 0.6));
 
   // 2. Densidade de requisitos amplifica os sinais detectados.
-  const breadth = Math.min(1.4, 1 + requirementCount / 25);
+  const breadth = isOptimized
+    ? Math.min(1.15, 1 + requirementCount / 60)
+    : Math.min(1.4, 1 + requirementCount / 25);
+
 
   const scores = {} as Record<Dimension, number>;
   for (const dim of Object.keys(rawScores) as Dimension[]) {
