@@ -257,8 +257,10 @@ export function analyzePromptText(
   const text = norm(raw);
   const words = raw.trim().split(/\s+/).filter(Boolean);
   const wordCount = words.length;
+  const isOptimized = isOptimizedPrompt(raw);
   const profile = { ...(PLATFORM_PROFILES[platform] ?? PLATFORM_PROFILES.lovable), ...overrides };
   const task = TASK_PROFILES[taskType] ?? TASK_PROFILES.other;
+
 
   // 1. Detecção de sinais ponderados (não depende de contagem de caracteres).
   const detectedSignals: EstimationResult["detectedSignals"] = [];
