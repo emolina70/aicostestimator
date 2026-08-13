@@ -278,7 +278,7 @@ export function analyzePromptText(
   }
 
   const bulletCount = (scopeText.match(/^\s*(?:[-*•]|\d+[.)])\s+/gm) ?? []).length;
-  const sentenceCount = scopeText.split(/[.;\n]+/).map((s) => s.trim()).filter((s) => s.length > 3).length;
+  const sentenceCount = scopeText.split(/[.;\n]+/).map((s: string) => s.trim()).filter((s: string) => s.length > 3).length;
   const requirementCount = Math.max(1, bulletCount || sentenceCount);
   const entityHits = countMatches(text, ENTITY_HINTS);
   const opHits = countMatches(text, OPERATION_HINTS);
@@ -386,7 +386,7 @@ export function analyzePromptText(
       estimated: est,
       min: round(Math.max(0.3, est * profile.minFactor)),
       max: round(est * Math.min(1.9, profile.maxFactor) * spread),
-      prompt: buildStepPrompt(raw, title, description, dims),
+      prompt: buildStepPrompt(scopeText, title, description, dims),
     });
   };
   if (scores.database > 20 || scores.authentication > 20)
@@ -499,6 +499,26 @@ export function analyzePromptText(
  * Nesse caso, a estrutura extra (seções, numeração, critérios de aceite) não
  * representa escopo adicional e não deve inflar a estimativa.
  */
+/** Remove as seções de boilerplate de um prompt otimizado, mantendo objetivo e requisitos. */
+export function stripOptimizedBoilerplate(raw: string): string {
+  const lines = raw.split(/\n/);
+  const out: string[] = [];
+  let skipping = false;
+  for (const line of lines) {
+    if (/^\s*#\s+/.test(line)) {
+      const h = norm(line);
+      skipping =
+        h.includes("escopo tecnico") ||
+        h.includes("ordem de execucao") ||
+        h.includes("restricoes") ||
+        h.includes("criterios de aceite");
+      if (!skipping) continue; // descarta o próprio cabeçalho de seção mantida
+    }
+    if (!skipping) out.push(line);
+  }
+  return out.join("\n").trim() || raw;
+}
+
 export function isOptimizedPrompt(raw: string): boolean {
   const t = norm(raw);
   const markers = [
