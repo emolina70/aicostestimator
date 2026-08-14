@@ -10,7 +10,10 @@ import {
 
 const analyzeInput = z.object({
   title: z.string().min(1).max(140),
-  content: z.string().min(10).max(20000),
+  content: z
+    .string()
+    .min(10, "O prompt precisa ter pelo menos 10 caracteres.")
+    .max(120000, "O prompt excede o limite de 120.000 caracteres."),
   platform: z.string().default("lovable"),
   taskType: z.string().default("other"),
   projectId: z.string().uuid().nullable().optional(),
