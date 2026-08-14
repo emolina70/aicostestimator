@@ -21,6 +21,7 @@ export type AnalyzeResponse = {
   analysisId: string;
   result: EstimationResult;
   usage: { used: number; limit: number; plan: string };
+  optimizedByAI: boolean;
 };
 
 export const analyzePrompt = createServerFn({ method: "POST" })
