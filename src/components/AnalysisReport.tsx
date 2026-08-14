@@ -258,6 +258,15 @@ export function AnalysisReport({
             <span className="ml-2 text-xs font-normal text-success">
               −{result.reductionPercentage}% estimado (~{result.estimatedOptimized} créditos)
             </span>
+            {optimizedByAI ? (
+              <Badge className="ml-2 border-success/50 font-mono text-success" variant="outline">
+                Otimizado por IA
+              </Badge>
+            ) : (
+              <Badge className="ml-2 font-mono text-muted-foreground" variant="outline">
+                Otimizado por regras
+              </Badge>
+            )}
           </CardTitle>
           <Button
             variant="outline"
