@@ -21,6 +21,7 @@ export type AnalyzeResponse = {
   analysisId: string;
   result: EstimationResult;
   usage: { used: number; limit: number; plan: string };
+  optimizedByAI: boolean;
 };
 
 export const analyzePrompt = createServerFn({ method: "POST" })
@@ -93,7 +94,8 @@ export const analyzePrompt = createServerFn({ method: "POST" })
 
     const taskType = data.taskType as TaskTypeId;
     // Toda análise passa pela camada de abstração de IA (hoje: motor heurístico).
-    const { getAIProvider, logAIUsage } = await import("@/lib/ai/provider.server");
+    const { getAIProvider, logAIUsage, optimizePromptWithAI } =
+      await import("@/lib/ai/provider.server");
     const provider = getAIProvider();
     const { value: result, usage } = await provider.analyzePrompt({
       content: data.content,
@@ -103,6 +105,47 @@ export const analyzePrompt = createServerFn({ method: "POST" })
       weights,
     });
     void logAIUsage(userId, usage);
+
+    // Otimização do prompt por IA (ChatGPT via Lovable AI Gateway).
+    // Em caso de falha, mantém o prompt otimizado heurístico já calculado.
+    let optimizedByAI = false;
+    try {
+      const ai = await optimizePromptWithAI({
+        content: data.content,
+        platform,
+        taskType,
+        overrides,
+        weights,
+      });
+      if (ai.ok && ai.optimizedPrompt.trim()) {
+        result.optimizedPrompt = ai.optimizedPrompt.trim();
+        // Recalcula a estimativa do prompt otimizado pela IA com o motor atual.
+        const aiEstimate = analyzePromptText(
+          result.optimizedPrompt,
+          platform,
+          overrides,
+          taskType,
+          weights,
+        );
+        result.estimatedOptimized = aiEstimate.estimatedExpected;
+        const reduction =
+          result.estimatedExpected > 0
+            ? Math.max(
+                0,
+                Math.round(
+                  ((result.estimatedExpected - aiEstimate.estimatedExpected) /
+                    result.estimatedExpected) *
+                    100,
+                ),
+              )
+            : 0;
+        result.reductionPercentage = reduction;
+        optimizedByAI = true;
+        void logAIUsage(userId, ai.usage);
+      }
+    } catch {
+      // Fallback silencioso: permanece a otimização heurística.
+    }
 
 
     const { data: prompt, error: promptError } = await supabase
@@ -165,6 +208,7 @@ export const analyzePrompt = createServerFn({ method: "POST" })
       analysisId: analysis.id,
       result,
       usage: { used: used + 1, limit, plan: plan?.name ?? "Free" },
+      optimizedByAI,
     };
   });
 

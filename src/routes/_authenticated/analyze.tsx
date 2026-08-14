@@ -254,7 +254,7 @@ function Analyze() {
         </CardContent>
       </Card>
 
-      {response && <AnalysisReport result={response.result} />}
+      {response && <AnalysisReport result={response.result} optimizedByAI={response.optimizedByAI} />}
     </div>
   );
 }
