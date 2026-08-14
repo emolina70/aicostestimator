@@ -131,10 +131,12 @@ export function AnalysisReport({
   result,
   optimizedPrompt,
   originalPrompt,
+  optimizedByAI,
 }: {
   result: EstimationResult;
   optimizedPrompt?: string;
   originalPrompt?: string;
+  optimizedByAI?: boolean;
 }) {
   const optimized = optimizedPrompt ?? result.optimizedPrompt;
 
