@@ -79,13 +79,13 @@ function Landing() {
             Estimativa antes da execução
           </p>
           <h1 className="max-w-3xl font-display text-4xl font-semibold leading-tight sm:text-6xl">
-            Saiba a <span className="text-gradient">faixa provável de créditos</span> antes de rodar
-            o prompt
+            Evite surpresas: estime o <span className="text-gradient">consumo de créditos</span>{" "}
+            antes de rodar seu prompt
           </h1>
           <p className="mt-6 max-w-2xl text-base text-muted-foreground sm:text-lg">
             O AI Dev Cost Optimizer analisa o seu prompt, pontua a complexidade em seis dimensões e
-            devolve um intervalo estimado com nível de confiança — além de recomendações e uma
-            versão otimizada. Não prevemos o consumo exato: mostramos a faixa mais provável.
+            devolve um intervalo estimado com nível de confiança, além de recomendações e uma versão
+            otimizada. Não prevemos o consumo exato, mostramos a faixa de consumo mais aproximada.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Button asChild size="lg">
