@@ -19,4 +19,4 @@ Hoje o prompt otimizado é gerado por regras locais (motor heurístico). O objet
 - `analyzePrompt` em `src/lib/analysis.functions.ts` passa a chamar sempre a IA para gerar `optimizedPrompt` (e recalcula a redução estimada reanalisando o texto gerado com o motor atual, que já detecta prompts otimizados); fallback heurístico automático em caso de falha.
 - Uso e custo da chamada gravados em `ai_usage_logs` via `logAIUsage`, já existente.
 - Persistência: o registro em `prompt_optimizations` passa a guardar o texto vindo da IA; nenhuma mudança de schema é necessária (opcionalmente, o motor usado pode ser anexado ao texto/reconhecido pelo marcador de seção).
-- UI: seletor em `src/routes/_authenticated/analyze.tsx` e etiqueta de origem em `src/components/AnalysisReport.tsx`.
+- UI: etiqueta de origem ("Otimizado por IA" / fallback) em `src/components/AnalysisReport.tsx`; sem seletor novo na tela de análise.
