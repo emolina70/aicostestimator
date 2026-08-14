@@ -211,8 +211,14 @@ function Analyze() {
               onChange={(e) => setContent(e.target.value)}
             />
             <p className="text-xs text-muted-foreground">
-              {content.trim().split(/\s+/).filter(Boolean).length} palavras
+              {content.trim().split(/\s+/).filter(Boolean).length} palavras ·{" "}
+              {content.length.toLocaleString("pt-BR")} / 120.000 caracteres
             </p>
+            {content.length > 120000 && (
+              <p className="text-xs text-destructive">
+                O prompt excede o limite de 120.000 caracteres. Reduza o texto ou divida a análise.
+              </p>
+            )}
           </div>
 
           {limitReached ? (
