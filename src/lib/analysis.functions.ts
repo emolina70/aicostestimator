@@ -208,6 +208,7 @@ export const analyzePrompt = createServerFn({ method: "POST" })
       analysisId: analysis.id,
       result,
       usage: { used: used + 1, limit, plan: plan?.name ?? "Free" },
+      optimizedByAI,
     };
   });
 
