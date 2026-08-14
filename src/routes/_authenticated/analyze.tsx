@@ -243,7 +243,9 @@ function Analyze() {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <Button
                 onClick={() => mutation.mutate()}
-                disabled={mutation.isPending || content.trim().length < 10}
+                disabled={
+                  mutation.isPending || content.trim().length < 10 || content.length > 120000
+                }
               >
                 {mutation.isPending ? (
                   <Loader2 className="size-4 animate-spin" />
