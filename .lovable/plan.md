@@ -1,12 +1,11 @@
 # Otimização de prompt com IA (ChatGPT)
 
-Hoje o prompt otimizado é gerado por regras locais (motor heurístico). O objetivo é permitir que o usuário escolha, na tela de análise, se a otimização será feita pelo motor heurístico (grátis) ou por um modelo de linguagem da OpenAI, que reescreve o prompt de fato.
+Hoje o prompt otimizado é gerado por regras locais (motor heurístico). O objetivo é passar a gerar o prompt otimizado sempre por IA (ChatGPT via Lovable AI Gateway), sem seletor — o motor heurístico continua só para score, faixa de créditos, fatores e etapas.
 
 ## O que muda para o usuário
 
-- Na tela "Analisar prompt", um novo seletor **Otimização**: `Heurística (grátis)` ou `IA (ChatGPT)`.
-- Ao escolher IA, o prompt otimizado exibido no relatório é o texto gerado pelo modelo — com a mesma estrutura de seções (Objetivo, Contexto, Requisitos, Escopo Técnico, Ordem de Execução, Restrições, Critérios de Aceite) e sem perder nenhum requisito do texto original.
-- O relatório indica qual motor gerou o prompt otimizado ("Otimizado por IA" / "Otimizado por regras").
+- O prompt otimizado exibido no relatório passa a ser sempre o texto gerado pelo modelo de IA — com a mesma estrutura de seções (Objetivo, Contexto, Requisitos, Escopo Técnico, Ordem de Execução, Restrições, Critérios de Aceite) e sem perder nenhum requisito do texto original.
+- O relatório mostra a etiqueta "Otimizado por IA" no bloco do prompt otimizado.
 - Se a chamada de IA falhar (erro, limite de créditos), a análise não quebra: cai automaticamente para a otimização heurística e um aviso discreto informa isso.
 
 ## O que NÃO muda
