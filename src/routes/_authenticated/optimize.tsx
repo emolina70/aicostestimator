@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useMutation } from "@tanstack/react-query";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { optimizePrompt } from "@/lib/optimizer.functions";
+import { getOptimizationUsage, optimizePrompt } from "@/lib/optimizer.functions";
 import type { OptimizeResponse } from "@/lib/optimizer.functions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,9 +10,15 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Copy, Gauge, Loader2, Sparkles, TriangleAlert, Wand2 } from "lucide-react";
+import { Copy, Gauge, Loader2, Lock, Sparkles, TriangleAlert, Wand2 } from "lucide-react";
 
 const MAX_CHARS = 120000;
+
+const ENGINE_LABEL: Record<OptimizeResponse["engine"], string> = {
+  lovable: "Otimizado pela IA do Lovable",
+  openai: "Otimizado pela OpenAI",
+  local: "Otimizado por regras locais",
+};
 
 export const Route = createFileRoute("/_authenticated/optimize")({
   head: () => ({
@@ -21,13 +27,13 @@ export const Route = createFileRoute("/_authenticated/optimize")({
       {
         name: "description",
         content:
-          "Envie seu prompt para a IA da OpenAI e receba uma versão otimizada, com análise, melhorias e notas de qualidade.",
+          "Otimize seu prompt com a IA nativa do Lovable e receba análise, melhorias e notas de qualidade — sem precisar de conta OpenAI.",
       },
       { property: "og:title", content: "Otimizar prompt com IA | AI Dev Cost Optimizer" },
       {
         property: "og:description",
         content:
-          "Envie seu prompt para a IA da OpenAI e receba uma versão otimizada, com análise, melhorias e notas de qualidade.",
+          "Otimize seu prompt com a IA nativa do Lovable e receba análise, melhorias e notas de qualidade — sem precisar de conta OpenAI.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -35,6 +41,7 @@ export const Route = createFileRoute("/_authenticated/optimize")({
   }),
   component: OptimizePage,
 });
+
 
 function ScoreCard({ label, score, tone }: { label: string; score: number; tone: "muted" | "good" }) {
   return (
@@ -60,13 +67,21 @@ function OptimizePage() {
   const [content, setContent] = useState("");
   const [result, setResult] = useState<OptimizeResponse | null>(null);
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const runOptimize = useServerFn(optimizePrompt);
+  const fetchUsage = useServerFn(getOptimizationUsage);
+
+  const { data: usage } = useQuery({
+    queryKey: ["optimization-usage"],
+    queryFn: () => fetchUsage({}),
+  });
 
   const mutation = useMutation({
     mutationFn: () => runOptimize({ data: { content: content.trim() } }),
     onSuccess: (data) => {
       setResult(data);
-      toast.success("Prompt otimizado pela IA");
+      void queryClient.invalidateQueries({ queryKey: ["optimization-usage"] });
+      toast.success("Prompt otimizado");
     },
     onError: (error: Error) => toast.error(error.message),
   });
@@ -74,6 +89,9 @@ function OptimizePage() {
   const tooShort = content.trim().length < 10;
   const tooLong = content.length > MAX_CHARS;
   const delta = result ? result.qualityScoreAfter - result.qualityScoreBefore : 0;
+  const used = usage?.used ?? 0;
+  const limit = usage?.limit ?? 5;
+  const limitReached = Boolean(usage) && used >= limit;
 
   function handleOptimize() {
     if (mutation.isPending) return;
@@ -105,10 +123,17 @@ function OptimizePage() {
       <div>
         <h1 className="font-display text-3xl font-semibold">Otimizar prompt com IA</h1>
         <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-          Envie seu prompt para a IA da OpenAI. Ela reorganiza, esclarece e completa o texto sem
-          alterar sua intenção — e devolve a análise, as melhorias aplicadas e as notas antes/depois.
+          A IA nativa do Lovable reorganiza, esclarece e completa seu prompt sem alterar a intenção
+          original — e devolve a análise, as melhorias aplicadas e as notas antes/depois. Não é
+          necessária nenhuma conta ou chave de IA externa.
         </p>
+        {usage && (
+          <p className="mt-2 text-xs text-muted-foreground">
+            {used} de {limit} otimizações usadas neste mês · plano {usage.plan}
+          </p>
+        )}
       </div>
+
 
       <Card className="surface">
         <CardHeader>
@@ -138,21 +163,38 @@ function OptimizePage() {
             )}
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            <Button onClick={handleOptimize} disabled={mutation.isPending || tooShort || tooLong}>
-              {mutation.isPending ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : (
-                <Sparkles className="size-4" />
-              )}
-              Otimizar Prompt
-            </Button>
-            {mutation.isPending && (
-              <p className="text-xs text-muted-foreground">
-                Analisando e otimizando seu prompt…
+          {limitReached ? (
+            <div className="rounded-xl border border-warning/40 bg-warning/5 p-4">
+              <p className="flex items-center gap-2 text-sm font-medium text-warning">
+                <Lock className="size-4" />
+                Limite mensal de otimizações atingido
               </p>
-            )}
-          </div>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Você usou {used} de {limit} otimizações do plano {usage?.plan}. O contador reinicia
+                no primeiro dia do próximo mês.
+              </p>
+              <Button asChild size="sm" className="mt-3">
+                <Link to="/settings">Ver planos</Link>
+              </Button>
+            </div>
+          ) : (
+            <div className="flex flex-wrap items-center gap-3">
+              <Button onClick={handleOptimize} disabled={mutation.isPending || tooShort || tooLong}>
+                {mutation.isPending ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <Sparkles className="size-4" />
+                )}
+                Otimizar Prompt
+              </Button>
+              {mutation.isPending && (
+                <p className="text-xs text-muted-foreground">
+                  Analisando e otimizando seu prompt…
+                </p>
+              )}
+            </div>
+          )}
+
         </CardContent>
       </Card>
 
@@ -163,10 +205,18 @@ function OptimizePage() {
               <CardTitle className="flex items-center gap-2 text-base">
                 <Wand2 className="size-4 text-success" />
                 Prompt otimizado
-                <Badge variant="outline" className="border-success/50 text-success">
-                  Otimizado por IA
+                <Badge
+                  variant="outline"
+                  className={
+                    result.engine === "local"
+                      ? "border-warning/50 text-warning"
+                      : "border-success/50 text-success"
+                  }
+                >
+                  {ENGINE_LABEL[result.engine]}
                 </Badge>
               </CardTitle>
+
               <div className="flex flex-wrap gap-2">
                 <Button variant="outline" size="sm" onClick={handleCopy}>
                   <Copy className="size-4" />
