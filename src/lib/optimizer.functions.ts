@@ -50,9 +50,22 @@ export const optimizePrompt = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => optimizeInput.parse(d))
   .handler(async ({ data, context }): Promise<OptimizeResponse> => {
     const { supabase, userId } = context;
-    const { optimizeWithOpenAI } = await import("@/lib/ai/openai.server");
+    const { optimizeWithOpenAI, optimizeWithGateway } = await import("@/lib/ai/openai.server");
 
-    const outcome = await optimizeWithOpenAI(data.content);
+    let outcome = await optimizeWithOpenAI(data.content);
+
+    // Se a chave própria da OpenAI está indisponível (sem créditos, inválida,
+    // ausente ou instável), cai automaticamente para o gateway de IA.
+    if (
+      !outcome.ok &&
+      ["quota_exceeded", "invalid_key", "not_configured", "rate_limited", "upstream"].includes(
+        outcome.code,
+      )
+    ) {
+      console.warn("[optimize-prompt] fallback para gateway", { code: outcome.code, userId });
+      const fallback = await optimizeWithGateway(data.content);
+      if (fallback.ok) outcome = fallback;
+    }
 
     if (!outcome.ok) {
       // Detalhe técnico fica apenas no log do backend (nunca contém a chave).
