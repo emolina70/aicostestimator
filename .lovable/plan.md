@@ -1,70 +1,62 @@
-# Plano: Otimização de prompts com chave OpenAI por usuário (BYOK)
+# Plano: Otimização de prompts nativa do Lovable (sem conta OpenAI)
 
-## Objetivo
-Garantir que, ao liberar a aplicação para outros usuários, **ninguém consuma a conta OpenAI do administrador**. Cada usuário passa a usar a própria chave OpenAI, criptografada em repouso e isolada por usuário. A chave global do projeto (`OPENAI_API_KEY`) deixa de ser usada para otimização.
+## Resposta curta
+Sim. O projeto já tem acesso ao motor de IA da própria plataforma Lovable, que roda modelos de última geração sem exigir conta, chave ou créditos da OpenAI. Esse caminho já existe no código como plano B (`optimizeWithGateway`); o plano é **promovê-lo a caminho principal** e aposentar a dependência da chave pessoal da OpenAI.
 
-## Comportamento padrão escolhido
-Cada usuário traz a própria chave (BYOK). Sem chave configurada, a tela de otimização mostra um aviso direcionando para Configurações. **Não há mais fallback automático para a chave compartilhada nem para o Lovable Gateway** — o gateway consumiria créditos do workspace do admin, o que volta a quebrar o isolamento. (O motor heurístico de otimização, sem custo, pode permanecer como fallback final opcional — decisão de UI.)
+## O que muda para você
+- Nenhum usuário precisa de conta OpenAI, e você também não.
+- O custo passa a ser consumo de créditos do próprio workspace Lovable, medido e visível.
+- A tela "Otimizar prompt" deixa de quebrar por falta de créditos na OpenAI.
+- A qualidade da otimização sobe: o modelo usado é mais recente que o `gpt-4.1` da configuração atual.
 
-## Passos de implementação
+## Escopo da implementação
 
-### 1. Migração: tabela `public.user_api_keys`
-```sql
-create table public.user_api_keys (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid references auth.users(id) on delete cascade not null unique,
-  encrypted_key text not null,           -- AES-256-GCM (iv + ciphertext + tag), base64
-  key_hint text not null default '',     -- ex.: "sk-...AB12" — últimos 4 chars, nunca a chave inteira
-  model text not null default 'gpt-4.1',
-  updated_at timestamptz not null default now()
-);
-grant select, insert, update, delete on public.user_api_keys to authenticated;
-grant all on public.user_api_keys to service_role;
-alter table public.user_api_keys enable row level security;
-create policy "user owns own key" on public.user_api_keys
-  for all to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());
-```
-RLS garante que cada usuário só vê a própria linha.
+### 1. Inverter a ordem do motor de otimização
+Em `src/lib/optimizer.functions.ts`:
+- Caminho principal passa a ser o motor Lovable (`optimizeWithGateway`).
+- A chave própria da OpenAI vira **opcional**: se `OPENAI_API_KEY` estiver configurada e o administrador ativar a preferência, ela é usada; caso contrário, nem é tentada (hoje ela é sempre tentada e falha antes do fallback, gastando tempo em toda requisição).
+- Se o motor Lovable falhar, o motor heurístico local (`buildOptimizedPrompt` em `src/lib/estimator.ts`) entra como último recurso, garantindo que a tela nunca fique sem resposta.
 
-### 2. Segredo de criptografia
-Gerar `USER_KEY_ENCRYPTION_KEY` (32 bytes, via `generate_secret`) — chave mestra do projeto, lida apenas no backend, usada para criptografar/descriptografar as chaves OpenAI dos usuários. Nunca exposta ao navegador.
+### 2. Elevar o modelo e ativar raciocínio
+Em `src/lib/ai/openai.server.ts` (função do gateway):
+- Manter o modelo `openai/gpt-5.6-sol` e a chamada em streaming já existente.
+- Remover qualquer limite de tempo artificial na chamada — otimizações de prompts longos (até 120k caracteres) podem levar minutos e não devem ser abortadas.
+- Manter o schema JSON estrito atual (`optimized_prompt`, `analysis`, `improvements`, `missing_information`, notas antes/depois).
 
-### 3. Backend: `src/lib/ai/user-keys.server.ts` (server-only)
-- `encryptKey(plaintext, masterKey)` / `decryptKey(encrypted, masterKey)` com AES-256-GCM (Web Crypto `crypto.subtle`, disponível no Worker runtime).
-- `getUserOpenAIKey(supabase, userId)`: busca a linha de `user_api_keys`, descriptografa, retorna `{ apiKey, model }` ou `null`.
-- `upsertUserOpenAIKey(supabase, userId, plaintext, model)`: criptografa, salva `key_hint` (últimos 4 chars), faz upsert.
-- `clearUserOpenAIKey(supabase, userId)`: delete.
+### 3. Enriquecer as instruções do otimizador
+Ampliar o `SYSTEM_INSTRUCTIONS` para que o prompt gerado contemple, quando aplicável ao pedido do usuário, o conjunto completo do que um sistema costuma exigir:
+- objetivo e contexto de negócio;
+- perfis de usuário, permissões e regras de acesso;
+- modelo de dados e relacionamentos;
+- autenticação, segurança e isolamento de dados;
+- validações, tratamento de erros e estados vazios;
+- interface, responsividade e acessibilidade;
+- integrações externas e variáveis sensíveis;
+- ordem de execução em etapas;
+- critérios de aceitação verificáveis.
 
-### 4. Server functions: `src/lib/api-key.functions.ts`
-- `saveOpenAIKey` (POST, auth): valida a chave (formato `sk-`, ≥ 20 chars), upsert.
-- `getOpenAIKeyStatus` (GET, auth): retorna `{ configured: boolean, hint, model }` — **nunca** retorna a chave.
-- `removeOpenAIKey` (DELETE, auth).
-- `getOpenAIModels` estático: lista de modelos selecionáveis (gpt-4.1, gpt-4o, gpt-4o-mini, etc.).
+Regra preservada: nunca inventar requisito de negócio. O que faltar vai para "informações faltantes", como já acontece hoje.
 
-### 5. Ajuste do motor de otimização
-- `optimizeWithOpenAI(prompt)` em `src/lib/ai/openai.server.ts`: receber a chave do usuário por parâmetro (remover a leitura de `OPENAI_API_KEY` neste caminho).
-- `optimizer.functions.ts`: buscar a chave do usuário via `getUserOpenAIKey`. Se ausente → erro `not_configured` com mensagem clara ("Configure sua chave OpenAI em Configurações"). Se a chave falhar (quota/inválida) → retornar o erro ao usuário, **sem** cair para a chave compartilhada nem para o gateway.
-- Remover a dependência de `optimizeWithGateway` no fluxo de otimização (manter o arquivo para uso administrativo futuro, mas não chamar automaticamente).
+### 4. Ajustes de interface
+- `src/routes/_authenticated/optimize.tsx`: substituir qualquer menção a "OpenAI" por "IA do Lovable"; mostrar selo indicando qual motor produziu o resultado (Lovable / OpenAI própria / regras locais).
+- Ajustar as mensagens de erro em `FRIENDLY_ERROR` para o novo contexto (sem "contate o administrador para configurar a OpenAI").
+- Manter o botão "Estimar créditos" que leva o prompt otimizado para a tela de análise.
 
-### 6. UI: Configurações (`src/routes/_authenticated/settings.tsx`)
-Novo card "Chave OpenAI":
-- Se não configurada: campo de senha para colar a chave + seletor de modelo + botão "Salvar".
-- Se configurada: badge "Configurada", mostra `key_hint` e modelo; botão "Substituir" (abre o campo) e "Remover".
-- Nunca exibe a chave salva de volta.
-- Texto explicativo: "Sua chave é usada apenas no backend, criptografada, e nunca enviada ao navegador. Cada otimização consome créditos da sua própria conta."
+### 5. Controle de consumo por usuário
+Como o custo agora é do workspace, adicionar um limite de otimizações por plano, espelhando o que já existe para análises:
+- Free: 5 otimizações/mês; Starter: 100; Pro: 1.000.
+- Contagem lida da tabela `openai_optimizations` (registros de sucesso do mês corrente).
+- Botão desabilitado com aviso claro ao atingir o limite, no mesmo padrão já usado na tela de análise.
 
-### 7. UI: Otimizar prompt (`src/routes/_optimize`)
-- Ao carregar, consultar `getOpenAIKeyStatus`. Se `configured === false`, exibir banner no topo: "Você ainda não configurou sua chave OpenAI." com botão para ir a `/settings`.
-- Manter o botão de otimização, mas ele retornará o erro `not_configured` se não houver chave — capturar e exibir como toast/banner.
+### 6. Registro e histórico
+A tabela `openai_optimizations` continua sendo usada sem mudança de estrutura; o campo `model` passa a registrar o motor efetivamente usado, permitindo auditar no painel administrativo qual motor atendeu cada otimização.
 
-### 8. Atualizar `openai_optimizations`
-- Já existe. Continua gravando o `model` e tokens. Garantir que `model` reflita o modelo escolhido pelo usuário (não mais fixo `gpt-4.1`).
+## Detalhes técnicos
+- Chamada ao gateway em `https://ai.gateway.lovable.dev/v1/responses`, autenticada pelo cabeçalho `Lovable-API-Key`, com `stream: true` e `store: false`, exatamente como já implementado.
+- Modelo: `openai/gpt-5.6-sol`.
+- Todo o tratamento permanece server-side (`*.server.ts`); nenhuma chave chega ao navegador.
+- Erros 429 (limite) e 402 (créditos do workspace esgotados) são tratados e exibidos com mensagem específica.
 
-## Escopo excluído
-- Não há cobrança/repasse de custo entre usuários.
-- Não há chave compartilhada de admin para otimização.
-- O Lovable AI Gateway deixa de ser fallback automático neste caminho.
-
-## Riscos / observações
-- Web Crypto AES-GCM funciona no runtime Worker (nodejs_compat). Validar com um teste real de salvar/otimizar.
-- A chave mestra (`USER_KEY_ENCRYPTION_KEY`) é única por projeto; se rotacionada, as chaves dos usuários ficam indecifráveis — documentar isso no card de Configurações.
+## Fora do escopo
+- Não haverá pedido de chave OpenAI a nenhum usuário.
+- A `OPENAI_API_KEY` existente permanece salva, apenas deixa de ser obrigatória.
