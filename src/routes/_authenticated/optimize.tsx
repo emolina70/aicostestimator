@@ -16,7 +16,6 @@ const MAX_CHARS = 120000;
 
 const ENGINE_LABEL: Record<OptimizeResponse["engine"], string> = {
   lovable: "Otimizado pela IA do Lovable",
-  openai: "Otimizado pela OpenAI",
   local: "Otimizado por regras locais",
 };
 
@@ -27,13 +26,13 @@ export const Route = createFileRoute("/_authenticated/optimize")({
       {
         name: "description",
         content:
-          "Otimize seu prompt com a IA nativa do Lovable e receba análise, melhorias e notas de qualidade — sem precisar de conta OpenAI.",
+          "Otimize seu prompt com a IA nativa do Lovable e receba análise, melhorias e notas de qualidade.",
       },
       { property: "og:title", content: "Otimizar prompt com IA | AI Dev Cost Optimizer" },
       {
         property: "og:description",
         content:
-          "Otimize seu prompt com a IA nativa do Lovable e receba análise, melhorias e notas de qualidade — sem precisar de conta OpenAI.",
+          "Otimize seu prompt com a IA nativa do Lovable e receba análise, melhorias e notas de qualidade.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
