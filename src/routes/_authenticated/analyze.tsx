@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -54,6 +54,21 @@ function Analyze() {
   const [newProject, setNewProject] = useState("");
   const [creatingProject, setCreatingProject] = useState(false);
   const [response, setResponse] = useState<AnalyzeResponse | null>(null);
+
+  // Recebe o prompt otimizado vindo da tela "Otimizar prompt".
+  useEffect(() => {
+    try {
+      const prefill = sessionStorage.getItem("prefill-prompt");
+      if (prefill) {
+        setContent(prefill);
+        sessionStorage.removeItem("prefill-prompt");
+        toast.info("Prompt otimizado carregado. Clique em Analisar prompt.");
+      }
+    } catch {
+      // ambiente sem sessionStorage
+    }
+  }, []);
+
 
   const queryClient = useQueryClient();
   const runAnalysis = useServerFn(analyzePrompt);
