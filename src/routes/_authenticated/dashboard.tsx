@@ -144,7 +144,7 @@ function Dashboard() {
               <XAxis dataKey="label" stroke={chartTheme.axis} fontSize={11} tickLine={false} />
               <YAxis stroke={chartTheme.axis} fontSize={11} tickLine={false} axisLine={false} />
               <Tooltip contentStyle={tooltipStyle} />
-              <Legend wrapperStyle={{ fontSize: 12 }} />
+              <Legend wrapperStyle={{ fontSize: 13 }} />
               <Area
                 type="monotone"
                 dataKey="estimated"
