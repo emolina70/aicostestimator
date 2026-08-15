@@ -38,6 +38,7 @@ export type OptimizationOutcome =
       ok: false;
       /** Código estável para o frontend traduzir em mensagem amigável. */
       code:
+        | "quota_exceeded"
         | "not_configured"
         | "invalid_key"
         | "rate_limited"
