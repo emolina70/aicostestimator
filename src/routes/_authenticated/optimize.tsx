@@ -85,6 +85,28 @@ function OptimizePage() {
     onError: (error: Error) => toast.error(error.message),
   });
 
+  const applyMissing = useMutation({
+    mutationFn: () => {
+      if (!result) throw new Error("Nenhuma otimização disponível.");
+      const missing = result.missingInformation.map((m, i) => `${i + 1}. ${m}`).join("\n");
+      const merged = [
+        result.optimizedPrompt.trim(),
+        "",
+        "## Informações complementares a incorporar",
+        "Implemente e detalhe explicitamente os pontos abaixo no prompt final, mantendo a intenção original:",
+        missing,
+      ].join("\n");
+      return runOptimize({ data: { content: merged } });
+    },
+    onSuccess: (data) => {
+      setResult(data);
+      void queryClient.invalidateQueries({ queryKey: ["optimization-usage"] });
+      toast.success("Informações faltantes incorporadas ao prompt");
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+
   const tooShort = content.trim().length < 10;
   const tooLong = content.length > MAX_CHARS;
   const delta = result ? result.qualityScoreAfter - result.qualityScoreBefore : 0;
