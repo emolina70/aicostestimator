@@ -148,8 +148,7 @@ export async function optimizeWithOpenAI(prompt: string): Promise<OptimizationOu
       ok: false,
       code: "not_configured",
       detail: "OPENAI_API_KEY não está configurada no ambiente do backend.",
-      engine: "openai" as const,
-      engine: "openai" as const,
+    engine: "openai" as const,
     model,
       durationMs: 0,
     };
@@ -168,8 +167,6 @@ export async function optimizeWithOpenAI(prompt: string): Promise<OptimizationOu
       },
       signal: controller.signal,
       body: JSON.stringify({
-        engine: "openai" as const,
-      engine: "openai" as const,
     model,
         instructions: SYSTEM_INSTRUCTIONS,
         input: [
@@ -195,8 +192,7 @@ export async function optimizeWithOpenAI(prompt: string): Promise<OptimizationOu
       ok: false,
       code: aborted ? "timeout" : "network",
       detail: err instanceof Error ? err.message : "falha de rede",
-      engine: "openai" as const,
-      engine: "openai" as const,
+    engine: "openai" as const,
     model,
       durationMs: Date.now() - startedAt,
     };
@@ -216,8 +212,7 @@ export async function optimizeWithOpenAI(prompt: string): Promise<OptimizationOu
               : "rate_limited"
             : "upstream",
       detail: `OpenAI ${res.status}: ${body.slice(0, 500)}`,
-      engine: "openai" as const,
-      engine: "openai" as const,
+    engine: "openai" as const,
     model,
       durationMs: Date.now() - startedAt,
     };
@@ -231,8 +226,7 @@ export async function optimizeWithOpenAI(prompt: string): Promise<OptimizationOu
       ok: false,
       code: "invalid_response",
       detail: err instanceof Error ? err.message : "corpo inválido",
-      engine: "openai" as const,
-      engine: "openai" as const,
+    engine: "openai" as const,
     model,
       durationMs: Date.now() - startedAt,
     };
@@ -245,8 +239,7 @@ export async function optimizeWithOpenAI(prompt: string): Promise<OptimizationOu
       ok: false,
       code: "invalid_response",
       detail: "resposta sem conteúdo de texto",
-      engine: "openai" as const,
-      engine: "openai" as const,
+    engine: "openai" as const,
     model,
       durationMs: Date.now() - startedAt,
     };
@@ -260,8 +253,7 @@ export async function optimizeWithOpenAI(prompt: string): Promise<OptimizationOu
       ok: false,
       code: "invalid_response",
       detail: "JSON inválido retornado pelo modelo",
-      engine: "openai" as const,
-      engine: "openai" as const,
+    engine: "openai" as const,
     model,
       durationMs: Date.now() - startedAt,
     };
@@ -273,8 +265,7 @@ export async function optimizeWithOpenAI(prompt: string): Promise<OptimizationOu
       ok: false,
       code: "invalid_response",
       detail: "campo optimized_prompt ausente ou vazio",
-      engine: "openai" as const,
-      engine: "openai" as const,
+    engine: "openai" as const,
     model,
       durationMs: Date.now() - startedAt,
     };
@@ -316,8 +307,7 @@ export async function optimizeWithGateway(prompt: string): Promise<OptimizationO
       ok: false,
       code: "not_configured",
       detail: "LOVABLE_API_KEY ausente no backend.",
-      engine: "lovable" as const,
-      engine: "lovable" as const,
+    engine: "lovable" as const,
     model,
       durationMs: 0,
     };
@@ -333,8 +323,6 @@ export async function optimizeWithGateway(prompt: string): Promise<OptimizationO
         "X-Lovable-AIG-SDK": "fetch",
       },
       body: JSON.stringify({
-        engine: "lovable" as const,
-      engine: "lovable" as const,
     model,
         stream: true,
         store: false,
@@ -360,8 +348,7 @@ export async function optimizeWithGateway(prompt: string): Promise<OptimizationO
       ok: false,
       code: "network",
       detail: err instanceof Error ? err.message : "falha de rede",
-      engine: "lovable" as const,
-      engine: "lovable" as const,
+    engine: "lovable" as const,
     model,
       durationMs: Date.now() - startedAt,
     };
@@ -373,8 +360,7 @@ export async function optimizeWithGateway(prompt: string): Promise<OptimizationO
       ok: false,
       code: res.status === 429 ? "rate_limited" : res.status === 402 ? "quota_exceeded" : "upstream",
       detail: `Gateway ${res.status}: ${body.slice(0, 500)}`,
-      engine: "lovable" as const,
-      engine: "lovable" as const,
+    engine: "lovable" as const,
     model,
       durationMs: Date.now() - startedAt,
     };
@@ -426,8 +412,7 @@ export async function optimizeWithGateway(prompt: string): Promise<OptimizationO
       ok: false,
       code: "invalid_response",
       detail: "JSON inválido retornado pelo gateway",
-      engine: "lovable" as const,
-      engine: "lovable" as const,
+    engine: "lovable" as const,
     model,
       durationMs: Date.now() - startedAt,
     };
@@ -439,8 +424,7 @@ export async function optimizeWithGateway(prompt: string): Promise<OptimizationO
       ok: false,
       code: "invalid_response",
       detail: "campo optimized_prompt ausente ou vazio",
-      engine: "lovable" as const,
-      engine: "lovable" as const,
+    engine: "lovable" as const,
     model,
       durationMs: Date.now() - startedAt,
     };
