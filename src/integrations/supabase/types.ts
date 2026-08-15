@@ -118,6 +118,74 @@ export type Database = {
         }
         Relationships: []
       }
+      openai_optimizations: {
+        Row: {
+          analysis: string | null
+          created_at: string
+          duration_ms: number
+          error_message: string | null
+          id: string
+          improvements: Json
+          input_tokens: number
+          missing_information: Json
+          model: string
+          optimized_prompt: string | null
+          original_prompt: string
+          output_tokens: number
+          prompt_id: string | null
+          quality_score_after: number | null
+          quality_score_before: number | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          analysis?: string | null
+          created_at?: string
+          duration_ms?: number
+          error_message?: string | null
+          id?: string
+          improvements?: Json
+          input_tokens?: number
+          missing_information?: Json
+          model: string
+          optimized_prompt?: string | null
+          original_prompt: string
+          output_tokens?: number
+          prompt_id?: string | null
+          quality_score_after?: number | null
+          quality_score_before?: number | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          analysis?: string | null
+          created_at?: string
+          duration_ms?: number
+          error_message?: string | null
+          id?: string
+          improvements?: Json
+          input_tokens?: number
+          missing_information?: Json
+          model?: string
+          optimized_prompt?: string | null
+          original_prompt?: string
+          output_tokens?: number
+          prompt_id?: string | null
+          quality_score_after?: number | null
+          quality_score_before?: number | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "openai_optimizations_prompt_id_fkey"
+            columns: ["prompt_id"]
+            isOneToOne: false
+            referencedRelation: "prompts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       plans: {
         Row: {
           active: boolean
