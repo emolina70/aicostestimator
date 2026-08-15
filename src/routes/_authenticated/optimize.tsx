@@ -205,10 +205,18 @@ function OptimizePage() {
               <CardTitle className="flex items-center gap-2 text-base">
                 <Wand2 className="size-4 text-success" />
                 Prompt otimizado
-                <Badge variant="outline" className="border-success/50 text-success">
-                  Otimizado por IA
+                <Badge
+                  variant="outline"
+                  className={
+                    result.engine === "local"
+                      ? "border-warning/50 text-warning"
+                      : "border-success/50 text-success"
+                  }
+                >
+                  {ENGINE_LABEL[result.engine]}
                 </Badge>
               </CardTitle>
+
               <div className="flex flex-wrap gap-2">
                 <Button variant="outline" size="sm" onClick={handleCopy}>
                   <Copy className="size-4" />
