@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -26,7 +26,34 @@ export function AppShell({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const fetchRole = useServerFn(getMyRole);
-  const { data: role } = useQuery({ queryKey: ["my-role"], queryFn: () => fetchRole({}), retry: false });
+  const [hasSession, setHasSession] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    supabase.auth.getSession().then(({ data }) => {
+      if (active) setHasSession(Boolean(data.session));
+    });
+    const { data } = supabase.auth.onAuthStateChange((_e, session) => {
+      setHasSession(Boolean(session));
+    });
+    return () => {
+      active = false;
+      data.subscription.unsubscribe();
+    };
+  }, []);
+
+  const { data: role } = useQuery({
+    queryKey: ["my-role"],
+    queryFn: async () => {
+      try {
+        return await fetchRole({});
+      } catch {
+        return { isAdmin: false };
+      }
+    },
+    enabled: hasSession,
+    retry: false,
+  });
   const nav = role?.isAdmin ? [...NAV, ADMIN_NAV] : [...NAV];
 
   async function signOut() {
