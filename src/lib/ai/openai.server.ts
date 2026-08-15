@@ -185,7 +185,14 @@ export async function optimizeWithOpenAI(prompt: string): Promise<OptimizationOu
     const body = await res.text().catch(() => "");
     return {
       ok: false,
-      code: res.status === 401 || res.status === 403 ? "invalid_key" : res.status === 429 ? "rate_limited" : "upstream",
+      code:
+        res.status === 401 || res.status === 403
+          ? "invalid_key"
+          : res.status === 429
+            ? body.includes("insufficient_quota")
+              ? "quota_exceeded"
+              : "rate_limited"
+            : "upstream",
       detail: `OpenAI ${res.status}: ${body.slice(0, 500)}`,
       model,
       durationMs: Date.now() - startedAt,
