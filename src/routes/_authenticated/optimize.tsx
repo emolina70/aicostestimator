@@ -121,11 +121,9 @@ function OptimizePage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="font-display text-3xl font-semibold">Otimizar prompt com IA</h1>
+        <h1 className="font-display text-3xl font-semibold">Otimizar prompt</h1>
         <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-          A IA nativa do Lovable reorganiza, esclarece e completa seu prompt sem alterar a intenção
-          original — e devolve a análise, as melhorias aplicadas e as notas antes/depois. Não é
-          necessária nenhuma conta ou chave de IA externa.
+          Seu prompt será analisado e otimizado sem alterar a intenção original
         </p>
         {usage && (
           <p className="mt-2 text-xs text-muted-foreground">
