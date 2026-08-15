@@ -266,3 +266,156 @@ export async function optimizeWithOpenAI(prompt: string): Promise<OptimizationOu
     durationMs: Date.now() - startedAt,
   };
 }
+
+/** Modelo usado no fallback pelo gateway de IA da plataforma. */
+export const FALLBACK_GATEWAY_MODEL = "openai/gpt-5.6-sol";
+
+/**
+ * Fallback: otimiza o prompt pelo gateway de IA da plataforma quando a chave
+ * própria da OpenAI está sem créditos, inválida ou indisponível.
+ */
+export async function optimizeWithGateway(prompt: string): Promise<OptimizationOutcome> {
+  const model = FALLBACK_GATEWAY_MODEL;
+  const startedAt = Date.now();
+  const apiKey = process.env["LOVABLE_API_KEY"];
+
+  if (!apiKey) {
+    return {
+      ok: false,
+      code: "not_configured",
+      detail: "LOVABLE_API_KEY ausente no backend.",
+      model,
+      durationMs: 0,
+    };
+  }
+
+  let res: Response;
+  try {
+    res = await fetch("https://ai.gateway.lovable.dev/v1/responses", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Lovable-API-Key": apiKey,
+        "X-Lovable-AIG-SDK": "fetch",
+      },
+      body: JSON.stringify({
+        model,
+        stream: true,
+        store: false,
+        instructions: SYSTEM_INSTRUCTIONS,
+        input: [
+          {
+            role: "user",
+            content: [{ type: "input_text", text: `Prompt original do usuário:\n\n${prompt}` }],
+          },
+        ],
+        text: {
+          format: {
+            type: "json_schema",
+            name: "prompt_optimization",
+            strict: true,
+            schema: RESPONSE_SCHEMA,
+          },
+        },
+      }),
+    });
+  } catch (err) {
+    return {
+      ok: false,
+      code: "network",
+      detail: err instanceof Error ? err.message : "falha de rede",
+      model,
+      durationMs: Date.now() - startedAt,
+    };
+  }
+
+  if (!res.ok || !res.body) {
+    const body = await res.text().catch(() => "");
+    return {
+      ok: false,
+      code: res.status === 429 ? "rate_limited" : res.status === 402 ? "quota_exceeded" : "upstream",
+      detail: `Gateway ${res.status}: ${body.slice(0, 500)}`,
+      model,
+      durationMs: Date.now() - startedAt,
+    };
+  }
+
+  let text = "";
+  let inputTokens = 0;
+  let outputTokens = 0;
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n");
+    buffer = lines.pop() ?? "";
+    for (const line of lines) {
+      if (!line.startsWith("data:")) continue;
+      const payload = line.slice(5).trim();
+      if (!payload || payload === "[DONE]") continue;
+      try {
+        const evt = JSON.parse(payload) as {
+          type?: string;
+          delta?: string;
+          response?: {
+            output_text?: string;
+            usage?: { input_tokens?: number; output_tokens?: number };
+          };
+        };
+        if (evt.type === "response.output_text.delta" && typeof evt.delta === "string") {
+          text += evt.delta;
+        } else if (evt.type === "response.completed" && evt.response) {
+          inputTokens = evt.response.usage?.input_tokens ?? 0;
+          outputTokens = evt.response.usage?.output_tokens ?? 0;
+          if (!text && typeof evt.response.output_text === "string") text = evt.response.output_text;
+        }
+      } catch {
+        // ignora eventos não-JSON
+      }
+    }
+  }
+
+  let parsed: Record<string, unknown>;
+  try {
+    parsed = JSON.parse(text.trim()) as Record<string, unknown>;
+  } catch {
+    return {
+      ok: false,
+      code: "invalid_response",
+      detail: "JSON inválido retornado pelo gateway",
+      model,
+      durationMs: Date.now() - startedAt,
+    };
+  }
+
+  const optimized = String(parsed["optimized_prompt"] ?? "").trim();
+  if (!optimized) {
+    return {
+      ok: false,
+      code: "invalid_response",
+      detail: "campo optimized_prompt ausente ou vazio",
+      model,
+      durationMs: Date.now() - startedAt,
+    };
+  }
+
+  return {
+    ok: true,
+    data: {
+      original_prompt: prompt,
+      optimized_prompt: optimized,
+      analysis: String(parsed["analysis"] ?? "").trim(),
+      improvements: toStringArray(parsed["improvements"]),
+      missing_information: toStringArray(parsed["missing_information"]),
+      quality_score_before: clampScore(parsed["quality_score_before"]),
+      quality_score_after: clampScore(parsed["quality_score_after"]),
+    },
+    model,
+    inputTokens,
+    outputTokens,
+    durationMs: Date.now() - startedAt,
+  };
+}
