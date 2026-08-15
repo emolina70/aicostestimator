@@ -141,10 +141,10 @@ function Dashboard() {
           <ChartCard title="Consumo estimado × real" subtitle="Créditos por dia">
             <AreaChart data={series}>
               <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.grid} vertical={false} />
-              <XAxis dataKey="label" stroke={chartTheme.axis} fontSize={11} tickLine={false} />
-              <YAxis stroke={chartTheme.axis} fontSize={11} tickLine={false} axisLine={false} />
+              <XAxis dataKey="label" stroke={chartTheme.axis} fontSize={12} tickLine={false} />
+              <YAxis stroke={chartTheme.axis} fontSize={12} tickLine={false} axisLine={false} />
               <Tooltip contentStyle={tooltipStyle} />
-              <Legend wrapperStyle={{ fontSize: 12 }} />
+              <Legend wrapperStyle={{ fontSize: 13 }} />
               <Area
                 type="monotone"
                 dataKey="estimated"
@@ -167,8 +167,8 @@ function Dashboard() {
           <ChartCard title="Precisão da estimativa" subtitle="% de acerto frente ao consumo real">
             <LineChart data={series}>
               <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.grid} vertical={false} />
-              <XAxis dataKey="label" stroke={chartTheme.axis} fontSize={11} tickLine={false} />
-              <YAxis domain={[0, 100]} stroke={chartTheme.axis} fontSize={11} tickLine={false} axisLine={false} />
+              <XAxis dataKey="label" stroke={chartTheme.axis} fontSize={12} tickLine={false} />
+              <YAxis domain={[0, 100]} stroke={chartTheme.axis} fontSize={12} tickLine={false} axisLine={false} />
               <Tooltip contentStyle={tooltipStyle} />
               <Line
                 type="monotone"
@@ -185,8 +185,8 @@ function Dashboard() {
           <ChartCard title="Prompts analisados" subtitle="Quantidade por dia">
             <BarChart data={series}>
               <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.grid} vertical={false} />
-              <XAxis dataKey="label" stroke={chartTheme.axis} fontSize={11} tickLine={false} />
-              <YAxis allowDecimals={false} stroke={chartTheme.axis} fontSize={11} tickLine={false} axisLine={false} />
+              <XAxis dataKey="label" stroke={chartTheme.axis} fontSize={12} tickLine={false} />
+              <YAxis allowDecimals={false} stroke={chartTheme.axis} fontSize={12} tickLine={false} axisLine={false} />
               <Tooltip contentStyle={tooltipStyle} />
               <Bar dataKey="count" name="Prompts" fill="var(--primary)" radius={[4, 4, 0, 0]} />
             </BarChart>
@@ -195,8 +195,8 @@ function Dashboard() {
           <ChartCard title="Complexidade média" subtitle="Score de 0 a 100 por dia">
             <LineChart data={series}>
               <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.grid} vertical={false} />
-              <XAxis dataKey="label" stroke={chartTheme.axis} fontSize={11} tickLine={false} />
-              <YAxis domain={[0, 100]} stroke={chartTheme.axis} fontSize={11} tickLine={false} axisLine={false} />
+              <XAxis dataKey="label" stroke={chartTheme.axis} fontSize={12} tickLine={false} />
+              <YAxis domain={[0, 100]} stroke={chartTheme.axis} fontSize={12} tickLine={false} axisLine={false} />
               <Tooltip contentStyle={tooltipStyle} />
               <Line
                 type="monotone"
