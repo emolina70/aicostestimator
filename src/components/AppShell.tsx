@@ -5,13 +5,15 @@ import { useServerFn } from "@tanstack/react-start";
 import { getMyRole } from "@/lib/analysis.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Gauge, History, FolderKanban, Settings, LogOut, Menu, X, Sparkles, ShieldCheck } from "lucide-react";
+import { Gauge, History, FolderKanban, Settings, LogOut, Menu, X, Sparkles, ShieldCheck, Wand2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const NAV = [
   { to: "/dashboard", label: "Painel", icon: Gauge },
   { to: "/analyze", label: "Analisar prompt", icon: Sparkles },
+  { to: "/optimize", label: "Otimizar prompt", icon: Wand2 },
   { to: "/history", label: "Histórico", icon: History },
+
   { to: "/projects", label: "Projetos", icon: FolderKanban },
   { to: "/settings", label: "Conta", icon: Settings },
 ] as const;
