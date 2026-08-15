@@ -1,19 +1,10 @@
 /**
- * Integração com a OpenAI (Responses API) — SERVER ONLY.
+ * Otimização de prompts pela IA nativa do Lovable (AI Gateway) — SERVER ONLY.
  *
- * A chave `OPENAI_API_KEY` é lida exclusivamente aqui, dentro do backend.
- * Nada deste arquivo é enviado ao navegador (`*.server.ts`).
+ * Nenhuma conta ou chave da OpenAI é necessária: a chamada usa a
+ * `LOVABLE_API_KEY` do projeto, lida exclusivamente no backend.
  */
 
-/** Modelo centralizado: configurável por variável de ambiente. */
-export const DEFAULT_OPENAI_MODEL = "gpt-4.1";
-export function getOpenAIModel(): string {
-  return process.env["OPENAI_MODEL"]?.trim() || DEFAULT_OPENAI_MODEL;
-}
-
-export const OPTIMIZATION_MIN_CHARS = 10;
-export const OPTIMIZATION_MAX_CHARS = 120000;
-const REQUEST_TIMEOUT_MS = 120000;
 
 export type OptimizationPayload = {
   original_prompt: string;
@@ -26,7 +17,7 @@ export type OptimizationPayload = {
 };
 
 /** Motor que efetivamente produziu a otimização. */
-export type OptimizationEngine = "lovable" | "openai" | "local";
+export type OptimizationEngine = "lovable" | "local";
 
 export type OptimizationOutcome =
   | {
@@ -121,184 +112,12 @@ function toStringArray(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
   return value.map((v) => String(v).trim()).filter(Boolean);
 }
+/** Modelo usado pela IA nativa do Lovable. */
+export const GATEWAY_MODEL = "openai/gpt-5.6-sol";
 
-/** Extrai o texto final de uma resposta da Responses API. */
-function extractOutputText(json: unknown): string {
-  const j = json as {
-    output_text?: string;
-    output?: Array<{ content?: Array<{ type?: string; text?: string }> }>;
-  };
-  if (typeof j.output_text === "string" && j.output_text.trim()) return j.output_text;
-  let text = "";
-  for (const item of j.output ?? []) {
-    for (const part of item.content ?? []) {
-      if (part.type === "output_text" && typeof part.text === "string") text += part.text;
-    }
-  }
-  return text;
-}
-
-export async function optimizeWithOpenAI(prompt: string): Promise<OptimizationOutcome> {
-  const model = getOpenAIModel();
-  const startedAt = Date.now();
-  const apiKey = process.env["OPENAI_API_KEY"];
-
-  if (!apiKey) {
-    return {
-      ok: false,
-      code: "not_configured",
-      detail: "OPENAI_API_KEY não está configurada no ambiente do backend.",
-    engine: "openai" as const,
-    model,
-      durationMs: 0,
-    };
-  }
-
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-
-  let res: Response;
-  try {
-    res = await fetch("https://api.openai.com/v1/responses", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      signal: controller.signal,
-      body: JSON.stringify({
-    model,
-        instructions: SYSTEM_INSTRUCTIONS,
-        input: [
-          {
-            role: "user",
-            content: [{ type: "input_text", text: `Prompt original do usuário:\n\n${prompt}` }],
-          },
-        ],
-        text: {
-          format: {
-            type: "json_schema",
-            name: "prompt_optimization",
-            strict: true,
-            schema: RESPONSE_SCHEMA,
-          },
-        },
-      }),
-    });
-  } catch (err) {
-    clearTimeout(timer);
-    const aborted = err instanceof Error && err.name === "AbortError";
-    return {
-      ok: false,
-      code: aborted ? "timeout" : "network",
-      detail: err instanceof Error ? err.message : "falha de rede",
-    engine: "openai" as const,
-    model,
-      durationMs: Date.now() - startedAt,
-    };
-  }
-  clearTimeout(timer);
-
-  if (!res.ok) {
-    const body = await res.text().catch(() => "");
-    return {
-      ok: false,
-      code:
-        res.status === 401 || res.status === 403
-          ? "invalid_key"
-          : res.status === 429
-            ? body.includes("insufficient_quota")
-              ? "quota_exceeded"
-              : "rate_limited"
-            : "upstream",
-      detail: `OpenAI ${res.status}: ${body.slice(0, 500)}`,
-    engine: "openai" as const,
-    model,
-      durationMs: Date.now() - startedAt,
-    };
-  }
-
-  let json: unknown;
-  try {
-    json = await res.json();
-  } catch (err) {
-    return {
-      ok: false,
-      code: "invalid_response",
-      detail: err instanceof Error ? err.message : "corpo inválido",
-    engine: "openai" as const,
-    model,
-      durationMs: Date.now() - startedAt,
-    };
-  }
-
-  const usage = (json as { usage?: { input_tokens?: number; output_tokens?: number } }).usage;
-  const text = extractOutputText(json).trim();
-  if (!text) {
-    return {
-      ok: false,
-      code: "invalid_response",
-      detail: "resposta sem conteúdo de texto",
-    engine: "openai" as const,
-    model,
-      durationMs: Date.now() - startedAt,
-    };
-  }
-
-  let parsed: Record<string, unknown>;
-  try {
-    parsed = JSON.parse(text) as Record<string, unknown>;
-  } catch {
-    return {
-      ok: false,
-      code: "invalid_response",
-      detail: "JSON inválido retornado pelo modelo",
-    engine: "openai" as const,
-    model,
-      durationMs: Date.now() - startedAt,
-    };
-  }
-
-  const optimized = String(parsed["optimized_prompt"] ?? "").trim();
-  if (!optimized) {
-    return {
-      ok: false,
-      code: "invalid_response",
-      detail: "campo optimized_prompt ausente ou vazio",
-    engine: "openai" as const,
-    model,
-      durationMs: Date.now() - startedAt,
-    };
-  }
-
-  return {
-    ok: true,
-    data: {
-      original_prompt: prompt,
-      optimized_prompt: optimized,
-      analysis: String(parsed["analysis"] ?? "").trim(),
-      improvements: toStringArray(parsed["improvements"]),
-      missing_information: toStringArray(parsed["missing_information"]),
-      quality_score_before: clampScore(parsed["quality_score_before"]),
-      quality_score_after: clampScore(parsed["quality_score_after"]),
-    },
-    engine: "openai" as const,
-    model,
-    inputTokens: usage?.input_tokens ?? 0,
-    outputTokens: usage?.output_tokens ?? 0,
-    durationMs: Date.now() - startedAt,
-  };
-}
-
-/** Modelo usado no fallback pelo gateway de IA da plataforma. */
-export const FALLBACK_GATEWAY_MODEL = "openai/gpt-5.6-sol";
-
-/**
- * Fallback: otimiza o prompt pelo gateway de IA da plataforma quando a chave
- * própria da OpenAI está sem créditos, inválida ou indisponível.
- */
+/** Otimiza o prompt usando a IA nativa do Lovable. */
 export async function optimizeWithGateway(prompt: string): Promise<OptimizationOutcome> {
-  const model = FALLBACK_GATEWAY_MODEL;
+  const model = GATEWAY_MODEL;
   const startedAt = Date.now();
   const apiKey = process.env["LOVABLE_API_KEY"];
 
@@ -448,3 +267,4 @@ export async function optimizeWithGateway(prompt: string): Promise<OptimizationO
     durationMs: Date.now() - startedAt,
   };
 }
+
