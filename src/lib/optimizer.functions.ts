@@ -11,7 +11,7 @@ export type OptimizeResponse = {
   missingInformation: string[];
   qualityScoreBefore: number;
   qualityScoreAfter: number;
-  engine: "lovable" | "openai" | "local";
+  engine: "lovable" | "local";
   model: string;
   inputTokens: number;
   outputTokens: number;
@@ -56,18 +56,10 @@ export const optimizePrompt = createServerFn({ method: "POST" })
       );
     }
 
-    const { optimizeWithOpenAI, optimizeWithGateway } = await import("@/lib/ai/openai.server");
+    const { optimizeWithGateway } = await import("@/lib/ai/optimizer.server");
 
-    // Caminho principal: motor de IA nativo do Lovable.
-    let outcome = await optimizeWithGateway(data.content);
-
-    // Caminho opcional: chave própria da OpenAI, apenas quando explicitamente preferida.
-    const preferOwnKey =
-      process.env["OPTIMIZER_PREFER_OPENAI"] === "true" && Boolean(process.env["OPENAI_API_KEY"]);
-    if (!outcome.ok && preferOwnKey) {
-      const own = await optimizeWithOpenAI(data.content);
-      if (own.ok) outcome = own;
-    }
+    // Motor único: IA nativa do Lovable.
+    const outcome = await optimizeWithGateway(data.content);
 
     // Último recurso: motor heurístico local (sem custo e sempre disponível).
     if (!outcome.ok) {
@@ -158,7 +150,7 @@ export const optimizePrompt = createServerFn({ method: "POST" })
     // Controle de consumo por usuário (reaproveita o registro já existente).
     const { logAIUsage } = await import("@/lib/ai/provider.server");
     void logAIUsage(userId, {
-      provider: outcome.engine === "openai" ? "openai" : "lovable",
+      provider: "lovable",
       model: outcome.model,
       operation: "optimize",
       inputTokens: outcome.inputTokens,
