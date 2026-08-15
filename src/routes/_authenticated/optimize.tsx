@@ -67,13 +67,21 @@ function OptimizePage() {
   const [content, setContent] = useState("");
   const [result, setResult] = useState<OptimizeResponse | null>(null);
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const runOptimize = useServerFn(optimizePrompt);
+  const fetchUsage = useServerFn(getOptimizationUsage);
+
+  const { data: usage } = useQuery({
+    queryKey: ["optimization-usage"],
+    queryFn: () => fetchUsage({}),
+  });
 
   const mutation = useMutation({
     mutationFn: () => runOptimize({ data: { content: content.trim() } }),
     onSuccess: (data) => {
       setResult(data);
-      toast.success("Prompt otimizado pela IA");
+      void queryClient.invalidateQueries({ queryKey: ["optimization-usage"] });
+      toast.success("Prompt otimizado");
     },
     onError: (error: Error) => toast.error(error.message),
   });
@@ -81,6 +89,9 @@ function OptimizePage() {
   const tooShort = content.trim().length < 10;
   const tooLong = content.length > MAX_CHARS;
   const delta = result ? result.qualityScoreAfter - result.qualityScoreBefore : 0;
+  const used = usage?.used ?? 0;
+  const limit = usage?.limit ?? 5;
+  const limitReached = Boolean(usage) && used >= limit;
 
   function handleOptimize() {
     if (mutation.isPending) return;
@@ -112,10 +123,17 @@ function OptimizePage() {
       <div>
         <h1 className="font-display text-3xl font-semibold">Otimizar prompt com IA</h1>
         <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-          Envie seu prompt para a IA da OpenAI. Ela reorganiza, esclarece e completa o texto sem
-          alterar sua intenção — e devolve a análise, as melhorias aplicadas e as notas antes/depois.
+          A IA nativa do Lovable reorganiza, esclarece e completa seu prompt sem alterar a intenção
+          original — e devolve a análise, as melhorias aplicadas e as notas antes/depois. Não é
+          necessária nenhuma conta ou chave de IA externa.
         </p>
+        {usage && (
+          <p className="mt-2 text-xs text-muted-foreground">
+            {used} de {limit} otimizações usadas neste mês · plano {usage.plan}
+          </p>
+        )}
       </div>
+
 
       <Card className="surface">
         <CardHeader>
