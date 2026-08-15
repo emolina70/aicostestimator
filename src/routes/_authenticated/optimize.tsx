@@ -85,6 +85,28 @@ function OptimizePage() {
     onError: (error: Error) => toast.error(error.message),
   });
 
+  const applyMissing = useMutation({
+    mutationFn: () => {
+      if (!result) throw new Error("Nenhuma otimização disponível.");
+      const missing = result.missingInformation.map((m, i) => `${i + 1}. ${m}`).join("\n");
+      const merged = [
+        result.optimizedPrompt.trim(),
+        "",
+        "## Informações complementares a incorporar",
+        "Implemente e detalhe explicitamente os pontos abaixo no prompt final, mantendo a intenção original:",
+        missing,
+      ].join("\n");
+      return runOptimize({ data: { content: merged } });
+    },
+    onSuccess: (data) => {
+      setResult(data);
+      void queryClient.invalidateQueries({ queryKey: ["optimization-usage"] });
+      toast.success("Informações faltantes incorporadas ao prompt");
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+
   const tooShort = content.trim().length < 10;
   const tooLong = content.length > MAX_CHARS;
   const delta = result ? result.qualityScoreAfter - result.qualityScoreBefore : 0;
@@ -299,7 +321,29 @@ function OptimizePage() {
                     Nenhuma informação essencial faltando.
                   </p>
                 )}
+
+                {result.missingInformation.length > 0 && (
+                  <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-warning/40 bg-warning/5 p-4">
+                    <p className="text-sm text-muted-foreground">
+                      Deseja implementar essas informações que podem estar faltando no prompt
+                      otimizado?
+                    </p>
+                    <Button
+                      size="sm"
+                      onClick={() => applyMissing.mutate()}
+                      disabled={applyMissing.isPending || mutation.isPending || limitReached}
+                    >
+                      {applyMissing.isPending ? (
+                        <Loader2 className="size-4 animate-spin" />
+                      ) : (
+                        <Wand2 className="size-4" />
+                      )}
+                      Implementar informações
+                    </Button>
+                  </div>
+                )}
               </div>
+
             </CardContent>
           </Card>
 
