@@ -37,7 +37,14 @@ export type OptimizationOutcome =
   | {
       ok: false;
       /** Código estável para o frontend traduzir em mensagem amigável. */
-      code: "not_configured" | "timeout" | "upstream" | "invalid_response" | "network";
+      code:
+        | "not_configured"
+        | "invalid_key"
+        | "rate_limited"
+        | "timeout"
+        | "upstream"
+        | "invalid_response"
+        | "network";
       /** Detalhe técnico — apenas para log do backend. */
       detail: string;
       model: string;
@@ -178,7 +185,7 @@ export async function optimizeWithOpenAI(prompt: string): Promise<OptimizationOu
     const body = await res.text().catch(() => "");
     return {
       ok: false,
-      code: "upstream",
+      code: res.status === 401 || res.status === 403 ? "invalid_key" : res.status === 429 ? "rate_limited" : "upstream",
       detail: `OpenAI ${res.status}: ${body.slice(0, 500)}`,
       model,
       durationMs: Date.now() - startedAt,

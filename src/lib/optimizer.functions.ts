@@ -30,6 +30,9 @@ const optimizeInput = z.object({
 const FRIENDLY_ERROR: Record<string, string> = {
   not_configured:
     "A integração com a OpenAI ainda não está configurada. Contate o administrador do sistema.",
+  invalid_key:
+    "A chave da OpenAI configurada é inválida ou expirou. Contate o administrador do sistema.",
+  rate_limited: "O limite de uso da OpenAI foi atingido. Tente novamente em instantes.",
   timeout: "A otimização demorou mais que o esperado. Tente novamente.",
   upstream: "Não foi possível realizar a otimização neste momento. Tente novamente.",
   network: "Não foi possível realizar a otimização neste momento. Tente novamente.",
