@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useMutation } from "@tanstack/react-query";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { optimizePrompt } from "@/lib/optimizer.functions";
+import { getOptimizationUsage, optimizePrompt } from "@/lib/optimizer.functions";
 import type { OptimizeResponse } from "@/lib/optimizer.functions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,9 +10,15 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Copy, Gauge, Loader2, Sparkles, TriangleAlert, Wand2 } from "lucide-react";
+import { Copy, Gauge, Loader2, Lock, Sparkles, TriangleAlert, Wand2 } from "lucide-react";
 
 const MAX_CHARS = 120000;
+
+const ENGINE_LABEL: Record<OptimizeResponse["engine"], string> = {
+  lovable: "Otimizado pela IA do Lovable",
+  openai: "Otimizado pela OpenAI",
+  local: "Otimizado por regras locais",
+};
 
 export const Route = createFileRoute("/_authenticated/optimize")({
   head: () => ({
@@ -21,13 +27,13 @@ export const Route = createFileRoute("/_authenticated/optimize")({
       {
         name: "description",
         content:
-          "Envie seu prompt para a IA da OpenAI e receba uma versão otimizada, com análise, melhorias e notas de qualidade.",
+          "Otimize seu prompt com a IA nativa do Lovable e receba análise, melhorias e notas de qualidade — sem precisar de conta OpenAI.",
       },
       { property: "og:title", content: "Otimizar prompt com IA | AI Dev Cost Optimizer" },
       {
         property: "og:description",
         content:
-          "Envie seu prompt para a IA da OpenAI e receba uma versão otimizada, com análise, melhorias e notas de qualidade.",
+          "Otimize seu prompt com a IA nativa do Lovable e receba análise, melhorias e notas de qualidade — sem precisar de conta OpenAI.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -35,6 +41,7 @@ export const Route = createFileRoute("/_authenticated/optimize")({
   }),
   component: OptimizePage,
 });
+
 
 function ScoreCard({ label, score, tone }: { label: string; score: number; tone: "muted" | "good" }) {
   return (
