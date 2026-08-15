@@ -32,6 +32,8 @@ const FRIENDLY_ERROR: Record<string, string> = {
     "A integração com a OpenAI ainda não está configurada. Contate o administrador do sistema.",
   invalid_key:
     "A chave da OpenAI configurada é inválida ou expirou. Contate o administrador do sistema.",
+  quota_exceeded:
+    "A conta da OpenAI está sem créditos disponíveis. Contate o administrador do sistema.",
   rate_limited: "O limite de uso da OpenAI foi atingido. Tente novamente em instantes.",
   timeout: "A otimização demorou mais que o esperado. Tente novamente.",
   upstream: "Não foi possível realizar a otimização neste momento. Tente novamente.",
@@ -48,9 +50,22 @@ export const optimizePrompt = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => optimizeInput.parse(d))
   .handler(async ({ data, context }): Promise<OptimizeResponse> => {
     const { supabase, userId } = context;
-    const { optimizeWithOpenAI } = await import("@/lib/ai/openai.server");
+    const { optimizeWithOpenAI, optimizeWithGateway } = await import("@/lib/ai/openai.server");
 
-    const outcome = await optimizeWithOpenAI(data.content);
+    let outcome = await optimizeWithOpenAI(data.content);
+
+    // Se a chave própria da OpenAI está indisponível (sem créditos, inválida,
+    // ausente ou instável), cai automaticamente para o gateway de IA.
+    if (
+      !outcome.ok &&
+      ["quota_exceeded", "invalid_key", "not_configured", "rate_limited", "upstream"].includes(
+        outcome.code,
+      )
+    ) {
+      console.warn("[optimize-prompt] fallback para gateway", { code: outcome.code, userId });
+      const fallback = await optimizeWithGateway(data.content);
+      if (fallback.ok) outcome = fallback;
+    }
 
     if (!outcome.ok) {
       // Detalhe técnico fica apenas no log do backend (nunca contém a chave).
