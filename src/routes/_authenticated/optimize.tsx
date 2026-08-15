@@ -163,21 +163,38 @@ function OptimizePage() {
             )}
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            <Button onClick={handleOptimize} disabled={mutation.isPending || tooShort || tooLong}>
-              {mutation.isPending ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : (
-                <Sparkles className="size-4" />
-              )}
-              Otimizar Prompt
-            </Button>
-            {mutation.isPending && (
-              <p className="text-xs text-muted-foreground">
-                Analisando e otimizando seu prompt…
+          {limitReached ? (
+            <div className="rounded-xl border border-warning/40 bg-warning/5 p-4">
+              <p className="flex items-center gap-2 text-sm font-medium text-warning">
+                <Lock className="size-4" />
+                Limite mensal de otimizações atingido
               </p>
-            )}
-          </div>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Você usou {used} de {limit} otimizações do plano {usage?.plan}. O contador reinicia
+                no primeiro dia do próximo mês.
+              </p>
+              <Button asChild size="sm" className="mt-3">
+                <Link to="/settings">Ver planos</Link>
+              </Button>
+            </div>
+          ) : (
+            <div className="flex flex-wrap items-center gap-3">
+              <Button onClick={handleOptimize} disabled={mutation.isPending || tooShort || tooLong}>
+                {mutation.isPending ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <Sparkles className="size-4" />
+                )}
+                Otimizar Prompt
+              </Button>
+              {mutation.isPending && (
+                <p className="text-xs text-muted-foreground">
+                  Analisando e otimizando seu prompt…
+                </p>
+              )}
+            </div>
+          )}
+
         </CardContent>
       </Card>
 
