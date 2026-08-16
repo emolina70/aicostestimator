@@ -10,7 +10,7 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "Estime a faixa provável de créditos de um prompt antes de rodá-lo no Lovable e em outras ferramentas de desenvolvimento com IA.",
+          "Estime a faixa provável de créditos de um prompt antes de executá-lo em ferramentas de desenvolvimento com IA.",
       },
       { property: "og:title", content: "AI Dev Cost Optimizer" },
       {
