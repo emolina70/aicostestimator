@@ -12,7 +12,10 @@ export const Route = createFileRoute("/")({
         content:
           "Estime a faixa provável de créditos de um prompt antes de executá-lo em ferramentas de desenvolvimento com IA.",
       },
-      { property: "og:title", content: "AI Dev Cost Optimizer" },
+      { property: "og:title", content: "AI Dev Cost Optimizer — estimativa de créditos para prompts" },
+      { property: "og:type", content: "website" },
+      { property: "og:url", content: "https://aicostestimator.lovable.app/" },
+      { name: "twitter:card", content: "summary_large_image" },
       {
         property: "og:description",
         content:
