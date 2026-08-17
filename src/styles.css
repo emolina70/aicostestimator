@@ -60,7 +60,63 @@
 }
 
 :root {
+  color-scheme: light;
   --radius: 0.75rem;
+  --background: oklch(0.985 0.004 250);
+  --foreground: oklch(0.24 0.025 250);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.24 0.025 250);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.24 0.025 250);
+  --primary: oklch(0.55 0.11 195);
+  --primary-foreground: oklch(0.99 0.004 240);
+  --secondary: oklch(0.94 0.008 250);
+  --secondary-foreground: oklch(0.26 0.025 250);
+  --muted: oklch(0.95 0.007 250);
+  --muted-foreground: oklch(0.46 0.02 250);
+  --accent: oklch(0.66 0.13 70);
+  --accent-foreground: oklch(0.99 0.004 240);
+  --destructive: oklch(0.55 0.2 25);
+  --destructive-foreground: oklch(0.99 0.004 240);
+  --success: oklch(0.55 0.14 156);
+  --success-foreground: oklch(0.99 0.004 240);
+  --warning: oklch(0.66 0.13 70);
+  --warning-foreground: oklch(0.99 0.004 240);
+  --border: oklch(0.89 0.008 250);
+  --input: oklch(0.89 0.008 250);
+  --ring: oklch(0.55 0.11 195);
+  --chart-1: oklch(0.55 0.11 195);
+  --chart-2: oklch(0.66 0.13 70);
+  --chart-3: oklch(0.55 0.14 156);
+  --chart-4: oklch(0.52 0.13 265);
+  --chart-5: oklch(0.55 0.2 25);
+  --sidebar: oklch(0.97 0.005 250);
+  --sidebar-foreground: oklch(0.26 0.025 250);
+  --sidebar-primary: oklch(0.55 0.11 195);
+  --sidebar-primary-foreground: oklch(0.99 0.004 240);
+  --sidebar-accent: oklch(0.94 0.008 250);
+  --sidebar-accent-foreground: oklch(0.26 0.025 250);
+  --sidebar-border: oklch(0.89 0.008 250);
+  --sidebar-ring: oklch(0.55 0.11 195);
+
+  --gradient-hero: radial-gradient(
+      120% 90% at 15% 0%,
+      oklch(0.55 0.11 195 / 0.14) 0%,
+      transparent 60%
+    ),
+    radial-gradient(90% 80% at 90% 10%, oklch(0.66 0.13 70 / 0.12) 0%, transparent 55%);
+  --gradient-meter: linear-gradient(
+    90deg,
+    oklch(0.55 0.14 156) 0%,
+    oklch(0.66 0.13 70) 55%,
+    oklch(0.55 0.2 25) 100%
+  );
+  --shadow-panel: 0 1px 2px 0 oklch(0.2 0.02 250 / 0.06), 0 12px 32px -20px oklch(0.2 0.02 250 / 0.35);
+  --shadow-glow: 0 0 0 1px oklch(0.55 0.11 195 / 0.25), 0 18px 50px -24px oklch(0.55 0.11 195 / 0.45);
+}
+
+.dark {
+  color-scheme: dark;
   --background: oklch(0.17 0.021 250);
   --foreground: oklch(0.96 0.006 240);
   --card: oklch(0.213 0.023 250);
@@ -114,18 +170,11 @@
   --shadow-glow: 0 0 0 1px oklch(0.79 0.135 191 / 0.25), 0 18px 50px -24px oklch(0.79 0.135 191 / 0.6);
 }
 
-.dark {
-  color-scheme: dark;
-}
-
 @layer base {
   * {
     border-color: var(--color-border);
   }
 
-  html {
-    color-scheme: dark;
-  }
 
   body {
     background-color: var(--color-background);
