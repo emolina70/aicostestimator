@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { ThemeToggle } from "@/components/theme";
 import { Gauge, ShieldCheck, Split, Sparkles, TrendingDown, Layers } from "lucide-react";
 
 export const Route = createFileRoute("/")({
