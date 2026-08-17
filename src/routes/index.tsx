@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { ThemeToggle } from "@/components/theme";
 import { Gauge, ShieldCheck, Split, Sparkles, TrendingDown, Layers } from "lucide-react";
 
 export const Route = createFileRoute("/")({
@@ -71,9 +72,12 @@ function Landing() {
             AI Dev Cost Optimizer
           </span>
         </div>
-        <Button asChild size="sm">
-          <Link to="/auth">Entrar</Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          <Button asChild size="sm">
+            <Link to="/auth">Entrar</Link>
+          </Button>
+        </div>
       </header>
 
       <section className="hero-bg">

@@ -6,6 +6,7 @@ import { getMyRole } from "@/lib/analysis.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Gauge, History, FolderKanban, Settings, LogOut, Menu, X, Sparkles, ShieldCheck, Wand2 } from "lucide-react";
+import { ThemeToggle } from "@/components/theme";
 import { cn } from "@/lib/utils";
 
 const NAV = [
@@ -93,6 +94,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </nav>
 
           <div className="flex items-center gap-2">
+            <ThemeToggle />
             <Button variant="ghost" size="sm" className="hidden lg:inline-flex" onClick={signOut}>
               <LogOut className="size-4" /> Sair
             </Button>
