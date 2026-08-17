@@ -6,6 +6,7 @@ import { getMyRole } from "@/lib/analysis.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Gauge, History, FolderKanban, Settings, LogOut, Menu, X, Sparkles, ShieldCheck, Wand2 } from "lucide-react";
+import { ThemeToggle } from "@/components/theme";
 import { cn } from "@/lib/utils";
 
 const NAV = [
