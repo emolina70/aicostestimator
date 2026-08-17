@@ -94,6 +94,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </nav>
 
           <div className="flex items-center gap-2">
+            <ThemeToggle />
             <Button variant="ghost" size="sm" className="hidden lg:inline-flex" onClick={signOut}>
               <LogOut className="size-4" /> Sair
             </Button>

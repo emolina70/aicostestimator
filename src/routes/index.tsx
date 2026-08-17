@@ -71,9 +71,12 @@ function Landing() {
             AI Dev Cost Optimizer
           </span>
         </div>
-        <Button asChild size="sm">
-          <Link to="/auth">Entrar</Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          <Button asChild size="sm">
+            <Link to="/auth">Entrar</Link>
+          </Button>
+        </div>
       </header>
 
       <section className="hero-bg">
