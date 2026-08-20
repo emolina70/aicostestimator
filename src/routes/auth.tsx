@@ -106,7 +106,7 @@ function AuthPage() {
           <img
             src={authLogo.url}
             alt="AI Dev Cost Optimizer"
-            className="size-9 rounded-lg object-cover"
+            className="size-[47px] rounded-lg object-cover"
           />
           <span className="font-display text-lg font-semibold">AI Dev Cost Optimizer</span>
         </Link>
