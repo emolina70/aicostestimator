@@ -8,7 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Gauge, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
+import authLogo from "@/assets/auth-logo.png.asset.json";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
@@ -102,9 +103,11 @@ function AuthPage() {
     <div className="hero-bg flex min-h-screen items-center justify-center px-4 py-12">
       <div className="w-full max-w-md">
         <Link to="/" className="mb-6 flex items-center justify-center gap-2">
-          <span className="flex size-9 items-center justify-center rounded-lg bg-primary/15 text-primary">
-            <Gauge className="size-5" />
-          </span>
+          <img
+            src={authLogo.url}
+            alt="AI Dev Cost Optimizer"
+            className="size-9 rounded-lg object-cover"
+          />
           <span className="font-display text-lg font-semibold">AI Dev Cost Optimizer</span>
         </Link>
 
