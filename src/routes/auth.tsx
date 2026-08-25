@@ -113,7 +113,11 @@ function AuthPage() {
 
         <Card className="surface">
           <CardHeader>
-            <CardTitle className="font-display">Acesse sua conta</CardTitle>
+            <CardTitle asChild>
+              <h1 className="font-display text-xl font-semibold">
+                Acesse o AI Dev Cost Optimizer
+              </h1>
+            </CardTitle>
             <CardDescription>
               Estimativas de créditos, histórico e otimização de prompts.
             </CardDescription>
