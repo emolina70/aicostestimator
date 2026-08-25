@@ -81,11 +81,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "AI Dev Cost Optimizer" },
+      { title: "AI Dev Cost Optimizer — Estimativa de Créditos para Prompts" },
       {
         name: "description",
         content:
-          "Estime a faixa provável de créditos de um prompt antes de executá-lo em ferramentas de desenvolvimento com IA.",
+          "Plataforma para analisar prompts de desenvolvimento com IA, pontuar complexidade e estimar o consumo de créditos com faixa probabilística.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

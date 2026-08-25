@@ -5,7 +5,7 @@ import { lovable } from "@/integrations/lovable/index";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
@@ -113,7 +113,9 @@ function AuthPage() {
 
         <Card className="surface">
           <CardHeader>
-            <CardTitle className="font-display">Acesse sua conta</CardTitle>
+            <h1 className="font-display text-xl font-semibold leading-none tracking-tight">
+              Acesse o AI Dev Cost Optimizer
+            </h1>
             <CardDescription>
               Estimativas de créditos, histórico e otimização de prompts.
             </CardDescription>
